@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.query(&prompt).await?;
 
     let mut stream = std::pin::pin!(client.receive());
-    let mut responses = Vec::new();
+    let mut responses = Responses::new();
 
     while let Some(result) = stream.next().await {
         let response = result?;
@@ -65,7 +65,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    let responses = Responses::new(responses);
     if let Some(complete) = responses.completion() {
         println!();
         println!("---");

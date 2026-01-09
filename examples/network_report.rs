@@ -43,7 +43,7 @@ fn default_max_hops() -> u32 {
 }
 
 fn ping_tool() -> Tool {
-    Tool::typed(
+    Tool::unstructured(
         "ping",
         "Ping a host to check connectivity and measure latency",
         |input: PingInput| {
@@ -68,7 +68,7 @@ fn ping_tool() -> Tool {
 }
 
 fn dns_lookup_tool() -> Tool {
-    Tool::typed(
+    Tool::unstructured(
         "dns_lookup",
         "Perform DNS lookup for a hostname",
         |input: DnsLookupInput| {
@@ -95,7 +95,7 @@ fn dns_lookup_tool() -> Tool {
 }
 
 fn traceroute_tool() -> Tool {
-    Tool::typed(
+    Tool::unstructured(
         "traceroute",
         "Trace the network path to a host",
         |input: TracerouteInput| {
@@ -170,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.query(&prompt).await?;
 
     let mut stream = std::pin::pin!(client.receive());
-    let mut responses = Vec::new();
+    let mut responses = Responses::new();
     let mut current_tool = String::new();
 
     while let Some(result) = stream.next().await {
@@ -210,7 +210,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    let responses = Responses::new(responses);
     if let Some(complete) = responses.completion() {
         println!();
         println!("{}", "=".repeat(50));

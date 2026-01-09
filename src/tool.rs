@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use schemars::JsonSchema;
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use thiserror::Error;
@@ -70,6 +71,7 @@ pub struct Tool {
     name: String,
     description: String,
     input_schema: Value,
+    output_schema: Option<Value>,
     handler: Arc<dyn Fn(ToolInput) -> Result<Value, ToolError> + Send + Sync>,
 }
 
@@ -79,6 +81,7 @@ impl std::fmt::Debug for Tool {
             .field("name", &self.name)
             .field("description", &self.description)
             .field("input_schema", &self.input_schema)
+            .field("output_schema", &self.output_schema)
             .field("handler", &"<fn>")
             .finish()
     }
@@ -89,6 +92,7 @@ impl Tool {
         name: impl Into<String>,
         description: impl Into<String>,
         input_schema: Value,
+        output_schema: impl Into<Option<Value>>,
         handler: F,
     ) -> Self
     where
@@ -98,11 +102,41 @@ impl Tool {
             name: name.into(),
             description: description.into(),
             input_schema,
+            output_schema: output_schema.into(),
             handler: Arc::new(handler),
         }
     }
 
-    pub fn typed<T>(
+    pub fn structured<T, U>(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        handler: impl Fn(T) -> Result<U, ToolError> + Send + Sync + 'static,
+    ) -> Self
+    where
+        T: JsonSchema + DeserializeOwned + 'static,
+        U: JsonSchema + Serialize + 'static,
+    {
+        let input_schema = util::schema_for::<T>();
+        let output_schema = util::schema_for::<U>();
+        Self {
+            name: name.into(),
+            description: description.into(),
+            input_schema,
+            output_schema: Some(output_schema),
+            handler: Arc::new(move |input: ToolInput| {
+                let value = input.into_value();
+                let typed = serde_json::from_value::<T>(value)
+                    .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
+                handler(typed).and_then(|output| {
+                    let output_value = serde_json::to_value(output)
+                        .map_err(|e| ToolError::execution_failed(e.to_string()))?;
+                    Ok(output_value)
+                })
+            }),
+        }
+    }
+
+    pub fn unstructured<T>(
         name: impl Into<String>,
         description: impl Into<String>,
         handler: impl Fn(T) -> Result<Value, ToolError> + Send + Sync + 'static,
@@ -110,14 +144,15 @@ impl Tool {
     where
         T: JsonSchema + DeserializeOwned + 'static,
     {
-        let schema = util::schema_for::<T>();
+        let input_schema = util::schema_for::<T>();
         Self {
             name: name.into(),
             description: description.into(),
-            input_schema: schema,
+            input_schema,
+            output_schema: None,
             handler: Arc::new(move |input: ToolInput| {
                 let value = input.into_value();
-                let typed: T = serde_json::from_value(value)
+                let typed = serde_json::from_value::<T>(value)
                     .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
                 handler(typed)
             }),
@@ -134,6 +169,10 @@ impl Tool {
 
     pub fn input_schema(&self) -> &Value {
         &self.input_schema
+    }
+
+    pub fn output_schema(&self) -> Option<&Value> {
+        self.output_schema.as_ref()
     }
 
     pub fn call(&self, input: ToolInput) -> Result<Value, ToolError> {
@@ -277,7 +316,7 @@ mod tests {
             name: String,
         }
 
-        let tool = Tool::typed("greet", "Greet a person", |input: GreetInput| {
+        let tool = Tool::unstructured("greet", "Greet a person", |input: GreetInput| {
             Ok(Tool::text_result(&format!("Hello, {}!", input.name)))
         });
 
@@ -296,7 +335,7 @@ mod tests {
             b: i32,
         }
 
-        let tool = Tool::typed("add", "Add two numbers", |input: AddInput| {
+        let tool = Tool::unstructured("add", "Add two numbers", |input: AddInput| {
             Ok(Tool::text_result(&format!("{}", input.a + input.b)))
         });
 
@@ -318,7 +357,7 @@ mod tests {
             required_field: String,
         }
 
-        let tool = Tool::typed("strict", "Requires field", |_input: StrictInput| {
+        let tool = Tool::unstructured("strict", "Requires field", |_input: StrictInput| {
             Ok(Tool::text_result("ok"))
         });
 
@@ -415,7 +454,7 @@ mod tests {
             unit: Option<TemperatureUnit>,
         }
 
-        let tool = Tool::typed(
+        let tool = Tool::unstructured(
             "get_weather",
             "Get the current weather in a given location",
             |_input: GetWeatherInput| Ok(Tool::text_result("72°F")),
@@ -514,7 +553,7 @@ mod tests {
             unit: Option<String>,
         }
 
-        let tool = Tool::typed("get_weather", "Get weather", |input: WeatherInput| {
+        let tool = Tool::unstructured("get_weather", "Get weather", |input: WeatherInput| {
             Ok(Tool::text_result(&format!("Weather in {}", input.location)))
         });
 

@@ -354,16 +354,20 @@ impl Response {
 pub struct Responses(Vec<Response>);
 
 impl Responses {
-    pub fn new(responses: Vec<Response>) -> Self {
-        Self(responses)
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn into_inner(self) -> Vec<Response> {
-        self.0
+        self.into()
     }
 
     pub fn as_slice(&self) -> &[Response] {
         &self.0
+    }
+
+    pub fn push(&mut self, response: Response) {
+        self.0.push(response);
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Response> {
@@ -444,6 +448,12 @@ impl Responses {
 impl From<Vec<Response>> for Responses {
     fn from(responses: Vec<Response>) -> Self {
         Self(responses)
+    }
+}
+
+impl From<Responses> for Vec<Response> {
+    fn from(responses: Responses) -> Self {
+        responses.0
     }
 }
 

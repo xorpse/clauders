@@ -90,7 +90,8 @@ impl McpServer {
                 json!({
                     "name": tool.name(),
                     "description": tool.description(),
-                    "inputSchema": tool.input_schema()
+                    "inputSchema": tool.input_schema(),
+                    "outputSchema": tool.output_schema()
                 })
             })
             .collect::<Vec<_>>();
@@ -119,7 +120,30 @@ impl McpServer {
         let input = ToolInput::new(arguments);
 
         match tool.call(input) {
-            Ok(content) => Self::jsonrpc_success(id, json!({ "content": content })),
+            Ok(content) => Self::jsonrpc_success(
+                id,
+                if tool.output_schema().is_none() {
+                    json!({ "content": content })
+                } else {
+                    let Ok(text_content) = serde_json::to_string(&content) else {
+                        return Self::jsonrpc_success(
+                            id,
+                            json!({
+                                "content": [{"type": "text", "text": "failed to serialize tool output"}],
+                                "isError": true
+                            }),
+                        );
+                    };
+
+                    json!({
+                        "content": {
+                            "type": "text",
+                            "text": text_content,
+                        },
+                        "structuredContent": content,
+                    })
+                },
+            ),
             Err(err) => Self::jsonrpc_success(
                 id,
                 json!({
@@ -142,7 +166,6 @@ impl McpServer {
             "initialize" => self.handle_initialize(&id),
             "tools/list" => self.handle_tools_list(&id),
             "tools/call" => self.handle_tools_call(&id, &params),
-            // Handle initialized notification - just acknowledge it
             "notifications/initialized" => json!({"jsonrpc": "2.0", "result": {}}),
             _ => Self::jsonrpc_error(&id, -32601, &format!("method '{}' not found", method)),
         }
