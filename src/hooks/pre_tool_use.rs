@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures::future::BoxFuture;
 use serde_json::{Value, json};
 
 use crate::tool_input::ToolInput;
@@ -160,4 +161,5 @@ impl PreToolUseOutput {
     }
 }
 
-pub type PreToolUseCallback = Arc<dyn Fn(PreToolUseInput) -> PreToolUseOutput + Send + Sync>;
+pub type PreToolUseCallback =
+    Arc<dyn Fn(PreToolUseInput) -> BoxFuture<'static, PreToolUseOutput> + Send + Sync>;

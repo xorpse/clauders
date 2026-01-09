@@ -52,7 +52,7 @@ fn ping_tool() -> Tool {
     Tool::unstructured(
         "ping",
         "Ping a host to check connectivity and measure latency",
-        |input: PingInput| {
+        |input: PingInput| async move {
             let output = Command::new("ping")
                 .args(["-c", &input.count.to_string(), &input.host])
                 .output()
@@ -77,7 +77,7 @@ fn dns_lookup_tool() -> Tool {
     Tool::structured(
         "dns_lookup",
         "Perform DNS lookup for a hostname",
-        |input: DnsLookupInput| {
+        |input: DnsLookupInput| async move {
             let output = Command::new("dig")
                 .args([&input.host, "+short"])
                 .output()
@@ -100,7 +100,7 @@ fn traceroute_tool() -> Tool {
     Tool::unstructured(
         "traceroute",
         "Trace the network path to a host",
-        |input: TracerouteInput| {
+        |input: TracerouteInput| async move {
             let output = Command::new("traceroute")
                 .args(["-e", "-I", "-m", &input.max_hops.to_string(), &input.host])
                 .output()

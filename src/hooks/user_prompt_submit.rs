@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures::future::BoxFuture;
 use serde_json::{json, Value};
 
 #[derive(Debug, Clone)]
@@ -131,4 +132,4 @@ impl UserPromptSubmitOutput {
 }
 
 pub type UserPromptSubmitCallback =
-    Arc<dyn Fn(UserPromptSubmitInput) -> UserPromptSubmitOutput + Send + Sync>;
+    Arc<dyn Fn(UserPromptSubmitInput) -> BoxFuture<'static, UserPromptSubmitOutput> + Send + Sync>;

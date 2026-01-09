@@ -1,4 +1,6 @@
 use std::fmt::{Debug, Display};
+use std::future::Future;
+use std::sync::Arc;
 
 pub mod post_tool_use;
 pub mod pre_tool_use;
@@ -29,63 +31,95 @@ impl Hooks {
     }
 
     #[must_use]
-    pub fn on_pre_tool_use<P, S>(mut self, pattern: P, callback: PreToolUseCallback) -> Self
+    pub fn on_pre_tool_use<P, S, F, Fut>(mut self, pattern: P, callback: F) -> Self
     where
         P: Into<Option<S>>,
         S: Display,
+        F: Fn(PreToolUseInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = PreToolUseOutput> + Send + 'static,
     {
         let pattern = pattern.into().map(|s| s.to_string());
-        self.pre_tool_use.push((pattern, callback));
+        self.pre_tool_use
+            .push((pattern, Arc::new(move |input| Box::pin(callback(input)))));
         self
     }
 
     #[must_use]
-    pub fn on_post_tool_use<P, S>(mut self, pattern: P, callback: PostToolUseCallback) -> Self
+    pub fn on_post_tool_use<P, S, F, Fut>(mut self, pattern: P, callback: F) -> Self
     where
         P: Into<Option<S>>,
         S: Display,
+        F: Fn(PostToolUseInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = PostToolUseOutput> + Send + 'static,
     {
         let pattern = pattern.into().map(|s| s.to_string());
-        self.post_tool_use.push((pattern, callback));
+        self.post_tool_use
+            .push((pattern, Arc::new(move |input| Box::pin(callback(input)))));
         self
     }
 
     #[must_use]
-    pub fn on_user_prompt_submit(mut self, callback: UserPromptSubmitCallback) -> Self {
-        self.user_prompt_submit.push(callback);
+    pub fn on_user_prompt_submit<F, Fut>(mut self, callback: F) -> Self
+    where
+        F: Fn(UserPromptSubmitInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = UserPromptSubmitOutput> + Send + 'static,
+    {
+        self.user_prompt_submit
+            .push(Arc::new(move |input| Box::pin(callback(input))));
         self
     }
 
     #[must_use]
-    pub fn on_stop(mut self, callback: StopCallback) -> Self {
-        self.stop.push(callback);
+    pub fn on_stop<F, Fut>(mut self, callback: F) -> Self
+    where
+        F: Fn(StopInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = StopOutput> + Send + 'static,
+    {
+        self.stop
+            .push(Arc::new(move |input| Box::pin(callback(input))));
         self
     }
 
-    pub fn add_pre_tool_use<P, S>(&mut self, pattern: P, callback: PreToolUseCallback)
+    pub fn add_pre_tool_use<P, S, F, Fut>(&mut self, pattern: P, callback: F)
     where
         P: Into<Option<S>>,
         S: Display,
+        F: Fn(PreToolUseInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = PreToolUseOutput> + Send + 'static,
     {
         let pattern = pattern.into().map(|s| s.to_string());
-        self.pre_tool_use.push((pattern, callback));
+        self.pre_tool_use
+            .push((pattern, Arc::new(move |input| Box::pin(callback(input)))));
     }
 
-    pub fn add_post_tool_use<P, S>(&mut self, pattern: P, callback: PostToolUseCallback)
+    pub fn add_post_tool_use<P, S, F, Fut>(&mut self, pattern: P, callback: F)
     where
         P: Into<Option<S>>,
         S: Display,
+        F: Fn(PostToolUseInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = PostToolUseOutput> + Send + 'static,
     {
         let pattern = pattern.into().map(|s| s.to_string());
-        self.post_tool_use.push((pattern, callback));
+        self.post_tool_use
+            .push((pattern, Arc::new(move |input| Box::pin(callback(input)))));
     }
 
-    pub fn add_user_prompt_submit(&mut self, callback: UserPromptSubmitCallback) {
-        self.user_prompt_submit.push(callback);
+    pub fn add_user_prompt_submit<F, Fut>(&mut self, callback: F)
+    where
+        F: Fn(UserPromptSubmitInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = UserPromptSubmitOutput> + Send + 'static,
+    {
+        self.user_prompt_submit
+            .push(Arc::new(move |input| Box::pin(callback(input))));
     }
 
-    pub fn add_stop(&mut self, callback: StopCallback) {
-        self.stop.push(callback);
+    pub fn add_stop<F, Fut>(&mut self, callback: F)
+    where
+        F: Fn(StopInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = StopOutput> + Send + 'static,
+    {
+        self.stop
+            .push(Arc::new(move |input| Box::pin(callback(input))));
     }
 
     pub fn user_prompt_submit_hooks(
@@ -162,24 +196,32 @@ impl Debug for Hooks {
 
 impl From<PostToolUseCallback> for Hooks {
     fn from(callback: PostToolUseCallback) -> Self {
-        Self::new().on_post_tool_use::<_, String>(None, callback)
+        let mut hooks = Self::new();
+        hooks.post_tool_use.push((None, callback));
+        hooks
     }
 }
 
 impl From<PreToolUseCallback> for Hooks {
     fn from(callback: PreToolUseCallback) -> Self {
-        Self::new().on_pre_tool_use::<_, String>(None, callback)
+        let mut hooks = Self::new();
+        hooks.pre_tool_use.push((None, callback));
+        hooks
     }
 }
 
 impl From<UserPromptSubmitCallback> for Hooks {
     fn from(callback: UserPromptSubmitCallback) -> Self {
-        Self::new().on_user_prompt_submit(callback)
+        let mut hooks = Self::new();
+        hooks.user_prompt_submit.push(callback);
+        hooks
     }
 }
 
 impl From<StopCallback> for Hooks {
     fn from(callback: StopCallback) -> Self {
-        Self::new().on_stop(callback)
+        let mut hooks = Self::new();
+        hooks.stop.push(callback);
+        hooks
     }
 }

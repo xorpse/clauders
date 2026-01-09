@@ -1,5 +1,7 @@
+use std::future::Future;
 use std::sync::Arc;
 
+use futures::future::BoxFuture;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -72,7 +74,7 @@ pub struct Tool {
     description: String,
     input_schema: Value,
     output_schema: Option<Value>,
-    handler: Arc<dyn Fn(ToolInput) -> Result<Value, ToolError> + Send + Sync>,
+    handler: Arc<dyn Fn(ToolInput) -> BoxFuture<'static, Result<Value, ToolError>> + Send + Sync>,
 }
 
 impl std::fmt::Debug for Tool {
@@ -88,7 +90,7 @@ impl std::fmt::Debug for Tool {
 }
 
 impl Tool {
-    pub fn new<F>(
+    pub fn new<F, Fut>(
         name: impl Into<String>,
         description: impl Into<String>,
         input_schema: Value,
@@ -96,28 +98,32 @@ impl Tool {
         handler: F,
     ) -> Self
     where
-        F: Fn(ToolInput) -> Result<Value, ToolError> + Send + Sync + 'static,
+        F: Fn(ToolInput) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Value, ToolError>> + Send + 'static,
     {
         Self {
             name: name.into(),
             description: description.into(),
             input_schema,
             output_schema: output_schema.into(),
-            handler: Arc::new(handler),
+            handler: Arc::new(move |input| Box::pin(handler(input))),
         }
     }
 
-    pub fn structured<T, U>(
+    pub fn structured<T, U, F, Fut>(
         name: impl Into<String>,
         description: impl Into<String>,
-        handler: impl Fn(T) -> Result<U, ToolError> + Send + Sync + 'static,
+        handler: F,
     ) -> Self
     where
-        T: JsonSchema + DeserializeOwned + 'static,
+        T: JsonSchema + DeserializeOwned + Send + 'static,
         U: JsonSchema + Serialize + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<U, ToolError>> + Send + 'static,
     {
         let input_schema = util::schema_for::<T>();
         let output_schema = util::schema_for::<U>();
+        let handler = Arc::new(handler);
         Self {
             name: name.into(),
             description: description.into(),
@@ -125,26 +131,31 @@ impl Tool {
             output_schema: Some(output_schema),
             handler: Arc::new(move |input: ToolInput| {
                 let value = input.into_value();
-                let typed = serde_json::from_value::<T>(value)
-                    .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
-                handler(typed).and_then(|output| {
-                    let output_value = serde_json::to_value(output)
-                        .map_err(|e| ToolError::execution_failed(e.to_string()))?;
-                    Ok(output_value)
+                let deser_result = serde_json::from_value::<T>(value);
+                let handler = Arc::clone(&handler);
+                Box::pin(async move {
+                    let typed = deser_result
+                        .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
+                    let output = handler(typed).await?;
+                    serde_json::to_value(output)
+                        .map_err(|e| ToolError::execution_failed(e.to_string()))
                 })
             }),
         }
     }
 
-    pub fn unstructured<T>(
+    pub fn unstructured<T, F, Fut>(
         name: impl Into<String>,
         description: impl Into<String>,
-        handler: impl Fn(T) -> Result<Value, ToolError> + Send + Sync + 'static,
+        handler: F,
     ) -> Self
     where
-        T: JsonSchema + DeserializeOwned + 'static,
+        T: JsonSchema + DeserializeOwned + Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Value, ToolError>> + Send + 'static,
     {
         let input_schema = util::schema_for::<T>();
+        let handler = Arc::new(handler);
         Self {
             name: name.into(),
             description: description.into(),
@@ -152,9 +163,13 @@ impl Tool {
             output_schema: None,
             handler: Arc::new(move |input: ToolInput| {
                 let value = input.into_value();
-                let typed = serde_json::from_value::<T>(value)
-                    .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
-                handler(typed)
+                let deser_result = serde_json::from_value::<T>(value);
+                let handler = Arc::clone(&handler);
+                Box::pin(async move {
+                    let typed = deser_result
+                        .map_err(|e| ToolError::deserialization_failed(e.to_string()))?;
+                    handler(typed).await
+                })
             }),
         }
     }
@@ -175,7 +190,7 @@ impl Tool {
         self.output_schema.as_ref()
     }
 
-    pub fn call(&self, input: ToolInput) -> Result<Value, ToolError> {
+    pub fn call(&self, input: ToolInput) -> BoxFuture<'static, Result<Value, ToolError>> {
         (self.handler)(input)
     }
 
@@ -316,7 +331,7 @@ mod tests {
             name: String,
         }
 
-        let tool = Tool::unstructured("greet", "Greet a person", |input: GreetInput| {
+        let tool = Tool::unstructured("greet", "Greet a person", |input: GreetInput| async move {
             Ok(Tool::text_result(&format!("Hello, {}!", input.name)))
         });
 
@@ -327,20 +342,20 @@ mod tests {
         assert_eq!(schema.get("type").and_then(|v| v.as_str()), Some("object"));
     }
 
-    #[test]
-    fn test_typed_tool_execution() {
+    #[tokio::test]
+    async fn test_typed_tool_execution() {
         #[derive(JsonSchema, Deserialize)]
         struct AddInput {
             a: i32,
             b: i32,
         }
 
-        let tool = Tool::unstructured("add", "Add two numbers", |input: AddInput| {
+        let tool = Tool::unstructured("add", "Add two numbers", |input: AddInput| async move {
             Ok(Tool::text_result(&format!("{}", input.a + input.b)))
         });
 
         let input = ToolInput::from_value(json!({"a": 5, "b": 3}));
-        let result = tool.call(input).unwrap();
+        let result = tool.call(input).await.unwrap();
 
         let text = result
             .as_array()
@@ -350,19 +365,19 @@ mod tests {
         assert_eq!(text, Some("8"));
     }
 
-    #[test]
-    fn test_typed_tool_deserialization_error() {
+    #[tokio::test]
+    async fn test_typed_tool_deserialization_error() {
         #[derive(JsonSchema, Deserialize)]
         struct StrictInput {
             required_field: String,
         }
 
-        let tool = Tool::unstructured("strict", "Requires field", |_input: StrictInput| {
+        let tool = Tool::unstructured("strict", "Requires field", |_input: StrictInput| async move {
             Ok(Tool::text_result("ok"))
         });
 
         let input = ToolInput::from_value(json!({}));
-        let result = tool.call(input);
+        let result = tool.call(input).await;
 
         assert!(result.is_err());
         assert!(matches!(result, Err(ToolError::DeserializationFailed(_))));
@@ -457,7 +472,7 @@ mod tests {
         let tool = Tool::unstructured(
             "get_weather",
             "Get the current weather in a given location",
-            |_input: GetWeatherInput| Ok(Tool::text_result("72°F")),
+            |_input: GetWeatherInput| async move { Ok(Tool::text_result("72°F")) },
         );
 
         assert_eq!(tool.name(), "get_weather");
@@ -545,20 +560,20 @@ mod tests {
         assert!(!required.iter().any(|v| v.as_str() == Some("field_c")));
     }
 
-    #[test]
-    fn test_typed_tool_with_weather_input() {
+    #[tokio::test]
+    async fn test_typed_tool_with_weather_input() {
         #[derive(JsonSchema, Deserialize)]
         struct WeatherInput {
             location: String,
             unit: Option<String>,
         }
 
-        let tool = Tool::unstructured("get_weather", "Get weather", |input: WeatherInput| {
+        let tool = Tool::unstructured("get_weather", "Get weather", |input: WeatherInput| async move {
             Ok(Tool::text_result(&format!("Weather in {}", input.location)))
         });
 
         let input = ToolInput::from_value(json!({"location": "San Francisco, CA"}));
-        let result = tool.call(input).unwrap();
+        let result = tool.call(input).await.unwrap();
         let text = result
             .as_array()
             .and_then(|a| a.first())
@@ -567,7 +582,7 @@ mod tests {
         assert_eq!(text, Some("Weather in San Francisco, CA"));
 
         let input_with_unit = ToolInput::from_value(json!({"location": "NYC", "unit": "celsius"}));
-        let result = tool.call(input_with_unit).unwrap();
+        let result = tool.call(input_with_unit).await.unwrap();
         let text = result
             .as_array()
             .and_then(|a| a.first())

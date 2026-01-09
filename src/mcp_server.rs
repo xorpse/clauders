@@ -107,7 +107,7 @@ impl McpServer {
         Self::jsonrpc_success(id, json!({ "tools": tools_json }))
     }
 
-    fn handle_tools_call(&self, id: &Value, params: &Value) -> Value {
+    async fn handle_tools_call(&self, id: &Value, params: &Value) -> Value {
         let tool_name = match params.get("name").and_then(|v| v.as_str()) {
             Some(name) => name,
             None => return Self::jsonrpc_error(id, -32602, "missing 'name' parameter"),
@@ -127,7 +127,7 @@ impl McpServer {
             .unwrap_or_else(|| json!({}));
         let input = ToolInput::new(arguments);
 
-        match tool.call(input) {
+        match tool.call(input).await {
             Ok(content) => Self::jsonrpc_success(
                 id,
                 if tool.output_schema().is_none() {
@@ -162,7 +162,7 @@ impl McpServer {
         }
     }
 
-    pub fn handle_json_message(&self, msg: &Value) -> Value {
+    pub async fn handle_json_message(&self, msg: &Value) -> Value {
         let method = msg
             .get("method")
             .and_then(|v| v.as_str())
@@ -173,7 +173,7 @@ impl McpServer {
         match method {
             "initialize" => self.handle_initialize(&id),
             "tools/list" => self.handle_tools_list(&id),
-            "tools/call" => self.handle_tools_call(&id, &params),
+            "tools/call" => self.handle_tools_call(&id, &params).await,
             "notifications/initialized" => json!({"jsonrpc": "2.0", "result": {}}),
             _ => Self::jsonrpc_error(&id, -32601, &format!("method '{}' not found", method)),
         }

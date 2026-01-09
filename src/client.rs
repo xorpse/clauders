@@ -260,7 +260,6 @@ impl Client {
 
                 match incoming {
                     Ok(Some(incoming)) => {
-                        // Handle control requests
                         if let Some(ctrl) = incoming.as_control_request() {
                             let response = match ctrl.request() {
                                 Request::McpMessage(mcp_req) => {
@@ -269,9 +268,11 @@ impl Client {
                                         mcp_req.server_name(),
                                         mcp_req.message(),
                                     )
+                                    .await
                                 }
                                 Request::HookCallback(hook_req) => {
                                     self.handle_hook_callback(ctrl.request_id(), hook_req)
+                                        .await
                                 }
                                 _ => continue,
                             };
@@ -312,7 +313,7 @@ impl Client {
         }
     }
 
-    fn handle_mcp_message(
+    async fn handle_mcp_message(
         &self,
         request_id: &str,
         server_name: &str,
@@ -322,7 +323,7 @@ impl Client {
 
         match self.mcp_servers.get(server_name) {
             Some(server) => {
-                let mcp_response = server.handle_json_message(message);
+                let mcp_response = server.handle_json_message(message).await;
                 // Wrap in mcp_response field as expected by Claude CLI
                 let response_data = serde_json::json!({ "mcp_response": mcp_response });
                 ResponseEnvelope::success(request_id, Some(response_data))
@@ -344,7 +345,7 @@ impl Client {
         }
     }
 
-    fn handle_hook_callback(
+    async fn handle_hook_callback(
         &self,
         request_id: &str,
         hook_req: &HookCallbackRequest,
@@ -376,7 +377,7 @@ impl Client {
                     PreToolUseInput::new(session_id, transcript_path, tool_name, tool_input.into());
 
                 if let Some((_, callback)) = hooks.get_pre_tool_use_hook(*idx) {
-                    let output = callback(hook_input);
+                    let output = callback(hook_input).await;
                     output.to_hook_response()
                 } else {
                     json!({})
@@ -396,7 +397,7 @@ impl Client {
                 );
 
                 if let Some((_, callback)) = hooks.get_post_tool_use_hook(*idx) {
-                    let output = callback(hook_input);
+                    let output = callback(hook_input).await;
                     output.to_hook_response()
                 } else {
                     json!({})
@@ -408,7 +409,7 @@ impl Client {
                 let hook_input = UserPromptSubmitInput::new(session_id, transcript_path, prompt);
 
                 if let Some(callback) = hooks.user_prompt_submit_hooks().nth(*idx) {
-                    let output = callback(hook_input);
+                    let output = callback(hook_input).await;
                     output.to_hook_response()
                 } else {
                     json!({})
@@ -420,7 +421,7 @@ impl Client {
                 let hook_input = StopInput::new(session_id, transcript_path, stop_hook_active);
 
                 if let Some(callback) = hooks.stop_hooks().nth(*idx) {
-                    let output = callback(hook_input);
+                    let output = callback(hook_input).await;
                     output.to_hook_response()
                 } else {
                     json!({})
