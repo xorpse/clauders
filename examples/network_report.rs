@@ -5,7 +5,7 @@ use std::sync::Arc;
 use clauders::{Client, McpServer, Model, Options, Responses, Tool};
 use futures::StreamExt;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Input for the ping tool
 #[derive(Debug, JsonSchema, Deserialize)]
@@ -26,6 +26,12 @@ fn default_count() -> u32 {
 struct DnsLookupInput {
     /// The hostname to look up
     host: String,
+}
+
+#[derive(Debug, JsonSchema, Deserialize, Serialize)]
+struct DnsLookupOutput {
+    #[schemars(description = "List of resolved DNS records")]
+    records: Vec<String>,
 }
 
 /// Input for the traceroute tool
@@ -68,7 +74,7 @@ fn ping_tool() -> Tool {
 }
 
 fn dns_lookup_tool() -> Tool {
-    Tool::unstructured(
+    Tool::structured(
         "dns_lookup",
         "Perform DNS lookup for a hostname",
         |input: DnsLookupInput| {
@@ -77,19 +83,15 @@ fn dns_lookup_tool() -> Tool {
                 .output()
                 .map_err(|e| clauders::ToolError::execution_failed(e.to_string()))?;
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
+            let result = DnsLookupOutput {
+                records: String::from_utf8_lossy(&output.stdout)
+                    .trim()
+                    .lines()
+                    .map(ToOwned::to_owned)
+                    .collect::<Vec<_>>(),
+            };
 
-            if stdout.is_empty() {
-                Ok(Tool::text_result(&format!(
-                    "No DNS records found for {}",
-                    input.host
-                )))
-            } else {
-                Ok(Tool::text_result(&format!(
-                    "DNS records for {}:\n{}",
-                    input.host, stdout
-                )))
-            }
+            Ok(result)
         },
     )
 }

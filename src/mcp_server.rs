@@ -87,12 +87,20 @@ impl McpServer {
             .tools
             .iter()
             .map(|tool| {
-                json!({
-                    "name": tool.name(),
-                    "description": tool.description(),
-                    "inputSchema": tool.input_schema(),
-                    "outputSchema": tool.output_schema()
-                })
+                if let Some(output_schema) = tool.output_schema() {
+                    json!({
+                        "name": tool.name(),
+                        "description": tool.description(),
+                        "inputSchema": tool.input_schema(),
+                        "outputSchema": output_schema,
+                    })
+                } else {
+                    json!({
+                        "name": tool.name(),
+                        "description": tool.description(),
+                        "inputSchema": tool.input_schema(),
+                    })
+                }
             })
             .collect::<Vec<_>>();
 
@@ -136,10 +144,10 @@ impl McpServer {
                     };
 
                     json!({
-                        "content": {
+                        "content": [{
                             "type": "text",
                             "text": text_content,
-                        },
+                        }],
                         "structuredContent": content,
                     })
                 },
