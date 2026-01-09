@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use schemars::JsonSchema;
 
+use crate::agent::Agent;
+use crate::hooks::Hooks;
 use crate::mcp_server::McpServer;
 use crate::model::Model;
 use crate::proto::PermissionMode;
@@ -24,7 +27,9 @@ pub struct Options {
     env: Vec<(String, String)>,
     max_budget_usd: Option<f64>,
     json_schema: Option<String>,
-    mcp_servers: Vec<(String, Arc<McpServer>)>,
+    mcp_servers: HashMap<String, Arc<McpServer>>,
+    agents: HashMap<String, Agent>,
+    hooks: Option<Hooks>,
 }
 
 impl Options {
@@ -36,14 +41,38 @@ impl Options {
     }
 
     #[must_use]
+    pub fn allowed_tool(mut self, tool: impl Into<String>) -> Self {
+        self.allowed_tools.push(tool.into());
+        self
+    }
+
+    #[must_use]
     pub fn allowed_tools(mut self, tools: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.allowed_tools = tools.into_iter().map(|s| s.into()).collect();
         self
     }
 
     #[must_use]
+    pub fn with_allowed_tools(mut self, tools: Vec<String>) -> Self {
+        self.allowed_tools = tools;
+        self
+    }
+
+    #[must_use]
+    pub fn disallowed_tool(mut self, tool: impl Into<String>) -> Self {
+        self.disallowed_tools.push(tool.into());
+        self
+    }
+
+    #[must_use]
     pub fn disallowed_tools(mut self, tools: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.disallowed_tools = tools.into_iter().map(|s| s.into()).collect();
+        self
+    }
+
+    #[must_use]
+    pub fn with_disallowed_tools(mut self, tools: Vec<String>) -> Self {
+        self.disallowed_tools = tools;
         self
     }
 
@@ -115,7 +144,23 @@ impl Options {
 
     #[must_use]
     pub fn with_mcp_server(mut self, name: impl Into<String>, server: Arc<McpServer>) -> Self {
-        self.mcp_servers.push((name.into(), server));
+        self.mcp_servers.insert(name.into(), server);
+        self
+    }
+
+    #[must_use]
+    pub fn with_agent(mut self, name: impl Into<String>, agent: Agent) -> Self {
+        self.agents.insert(name.into(), agent);
+        self
+    }
+
+    #[must_use]
+    pub fn with_agents(
+        mut self,
+        iter: impl IntoIterator<Item = (impl Into<String>, Agent)>,
+    ) -> Self {
+        self.agents
+            .extend(iter.into_iter().map(|(name, agent)| (name.into(), agent)));
         self
     }
 
@@ -125,17 +170,25 @@ impl Options {
         self
     }
 
-    pub(crate) fn mcp_servers(&self) -> &[(String, Arc<McpServer>)] {
+    #[must_use]
+    pub fn hooks(mut self, hooks: impl Into<Hooks>) -> Self {
+        self.hooks = Some(hooks.into());
+        self
+    }
+
+    pub(crate) fn mcp_servers(&self) -> &HashMap<String, Arc<McpServer>> {
         &self.mcp_servers
+    }
+
+    pub(crate) fn take_hooks(&mut self) -> Option<Hooks> {
+        self.hooks.take()
     }
 
     pub(crate) fn to_transport_options(&self) -> TransportOptions {
         use crate::transport::TransportOptionsBuilder;
 
         let mut allowed = self.allowed_tools.clone();
-        let mut mcp_server_names = Vec::new();
         for (server_name, server) in &self.mcp_servers {
-            mcp_server_names.push(server_name.clone());
             for tool in server.tools() {
                 allowed.push(format!("mcp__{}__{}", server_name, tool.name()));
             }
@@ -145,7 +198,7 @@ impl Options {
         builder
             .allowed_tools(allowed)
             .disallowed_tools(self.disallowed_tools.clone())
-            .mcp_server_names(mcp_server_names)
+            .mcp_server_names(self.mcp_servers.keys().cloned().collect::<Vec<_>>())
             .env(self.env.clone());
 
         if let Some(m) = &self.model {
@@ -161,12 +214,7 @@ impl Options {
             builder.append_system_prompt(p.clone());
         }
         if let Some(m) = self.permission_mode {
-            builder.permission_mode(match m {
-                PermissionMode::Default => "default",
-                PermissionMode::AcceptEdits => "acceptEdits",
-                PermissionMode::Plan => "plan",
-                PermissionMode::BypassPermissions => "bypassPermissions",
-            });
+            builder.permission_mode(m.to_string());
         }
         if let Some(b) = self.max_budget_usd {
             builder.max_budget_usd(b);
@@ -177,6 +225,8 @@ impl Options {
         if let Some(s) = &self.json_schema {
             builder.json_schema(s.clone());
         }
+
+        builder.agents(self.agents.clone());
 
         builder.build().expect("all fields have defaults")
     }

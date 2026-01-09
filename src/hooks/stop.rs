@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use serde_json::{json, Value};
+
 #[derive(Debug, Clone)]
 pub struct StopInput {
     session_id: String,
@@ -85,6 +87,26 @@ impl StopOutput {
     pub fn with_reason(mut self, reason: impl Into<String>) -> Self {
         self.reason = Some(reason.into());
         self
+    }
+
+    pub fn to_hook_response(&self) -> Value {
+        let mut result = json!({});
+
+        if let Some(decision) = self.decision()
+            && decision == StopDecision::Block
+        {
+            result["decision"] = json!("block");
+        }
+
+        if let Some(reason) = self.reason() {
+            result["reason"] = json!(reason);
+        }
+
+        result["hookSpecificOutput"] = json!({
+            "hookEventName": "Stop"
+        });
+
+        result
     }
 }
 

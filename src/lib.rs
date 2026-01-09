@@ -13,16 +13,17 @@
 //! # Example
 //!
 //! ```no_run
-//! use claudio::{Client, Options};
+//! use clauders::{Client, Options};
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), claudio::Error> {
+//! async fn main() -> Result<(), clauders::Error> {
 //!     let client = Client::new(Options::new()).await?;
 //!     client.query("Hello, Claude!").await?;
 //!     Ok(())
 //! }
 //! ```
 
+pub mod agent;
 pub mod client;
 pub mod error;
 pub mod handler;
@@ -38,10 +39,16 @@ pub mod tool_input;
 pub mod transport;
 mod util;
 
+pub use agent::Agent;
 pub use client::Client;
 pub use error::Error;
 pub use handler::{DefaultHandler, Handler, dispatch};
-pub use hooks::Hooks;
+pub use hooks::{
+    Hooks, PostToolUseCallback, PostToolUseDecision, PostToolUseInput, PostToolUseOutput,
+    PreToolUseCallback, PreToolUseDecision, PreToolUseInput, PreToolUseOutput, StopCallback,
+    StopDecision, StopInput, StopOutput, UserPromptSubmitCallback, UserPromptSubmitDecision,
+    UserPromptSubmitInput, UserPromptSubmitOutput,
+};
 pub use mcp_server::McpServer;
 pub use model::Model;
 pub use options::Options;

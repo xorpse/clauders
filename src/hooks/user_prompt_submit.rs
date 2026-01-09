@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use serde_json::{json, Value};
+
 #[derive(Debug, Clone)]
 pub struct UserPromptSubmitInput {
     session_id: String,
@@ -100,6 +102,31 @@ impl UserPromptSubmitOutput {
     pub fn with_additional_context(mut self, context: impl Into<String>) -> Self {
         self.additional_context = Some(context.into());
         self
+    }
+
+    pub fn to_hook_response(&self) -> Value {
+        let mut result = json!({});
+
+        if let Some(decision) = self.decision()
+            && decision == UserPromptSubmitDecision::Block
+        {
+            result["decision"] = json!("block");
+        }
+
+        if let Some(reason) = self.reason() {
+            result["reason"] = json!(reason);
+        }
+
+        let mut hook_specific = json!({
+            "hookEventName": "UserPromptSubmit"
+        });
+
+        if let Some(context) = self.additional_context() {
+            hook_specific["additionalContext"] = json!(context);
+        }
+
+        result["hookSpecificOutput"] = hook_specific;
+        result
     }
 }
 

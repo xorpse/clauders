@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use serde_json::{Value, json};
+
 use crate::tool_input::ToolInput;
 
 #[derive(Debug, Clone)]
@@ -47,6 +49,16 @@ pub enum PreToolUseDecision {
     Allow,
     Deny,
     Ask,
+}
+
+impl std::fmt::Display for PreToolUseDecision {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            PreToolUseDecision::Allow => "allow",
+            PreToolUseDecision::Deny => "deny",
+            PreToolUseDecision::Ask => "ask",
+        })
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -125,6 +137,26 @@ impl PreToolUseOutput {
     pub fn with_updated_input(mut self, input: ToolInput) -> Self {
         self.updated_input = Some(input);
         self
+    }
+
+    pub fn to_hook_response(&self) -> Value {
+        let mut hook_specific = json!({
+            "hookEventName": "PreToolUse"
+        });
+
+        if let Some(decision) = self.decision() {
+            hook_specific["permissionDecision"] = json!(decision.to_string());
+        }
+
+        if let Some(reason) = self.reason() {
+            hook_specific["permissionDecisionReason"] = json!(reason);
+        }
+
+        if let Some(updated_input) = self.updated_input() {
+            hook_specific["updatedInput"] = updated_input.as_value().clone();
+        }
+
+        json!({ "hookSpecificOutput": hook_specific })
     }
 }
 

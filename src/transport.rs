@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 
@@ -6,6 +7,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tracing::{debug, error, info, warn};
 
+use crate::agent::Agent;
 use crate::error::Error;
 use crate::proto::{Incoming, RequestEnvelope, control::ResponseEnvelope};
 
@@ -41,6 +43,7 @@ pub struct TransportOptions {
     env: Vec<(String, String)>,
     json_schema: Option<String>,
     mcp_server_names: Vec<String>,
+    agents: HashMap<String, Agent>,
 }
 
 impl TransportOptions {
@@ -94,6 +97,10 @@ impl TransportOptions {
 
     pub fn mcp_server_names(&self) -> &[String] {
         &self.mcp_server_names
+    }
+
+    pub fn agents(&self) -> &HashMap<String, Agent> {
+        &self.agents
     }
 }
 
@@ -205,6 +212,13 @@ impl Transport {
             cmd.extend([
                 "--mcp-config".to_owned(),
                 serde_json::to_string(&mcp_config).expect("MCP config serialization"),
+            ]);
+        }
+
+        if !options.agents.is_empty() {
+            cmd.extend([
+                "--agents".to_owned(),
+                serde_json::to_string(&options.agents).expect("Agents serialisation"),
             ]);
         }
 
