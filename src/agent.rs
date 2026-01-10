@@ -24,7 +24,7 @@ pub struct Agent {
     description: String,
     prompt: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    model: Option<String>,
+    model: Option<Model>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tools: Vec<String>,
 }
@@ -40,17 +40,47 @@ impl Agent {
         }
     }
 
+    /// The description of this agent.
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    /// The prompt of this agent.
+    pub fn prompt(&self) -> &str {
+        &self.prompt
+    }
+
+    /// The model of this agent, if set.
+    pub fn model(&self) -> Option<&Model> {
+        self.model.as_ref()
+    }
+
+    /// Sets the model for this agent.
+    pub fn set_model(&mut self, model: impl Into<Model>) {
+        self.model = Some(model.into());
+    }
+
     /// Sets the model for this agent.
     #[must_use]
-    pub fn model(mut self, model: impl Into<Model>) -> Self {
-        self.model = Some(model.into().to_string());
+    pub fn with_model(mut self, model: impl Into<Model>) -> Self {
+        self.set_model(model);
         self
+    }
+
+    /// The tools this agent can use.
+    pub fn tools(&self) -> &[String] {
+        &self.tools
+    }
+
+    /// Sets the tools this agent can use.
+    pub fn set_tools(&mut self, tools: impl IntoIterator<Item = impl Into<String>>) {
+        self.tools = tools.into_iter().map(|s| s.into()).collect();
     }
 
     /// Sets the tools this agent can use.
     #[must_use]
-    pub fn tools(mut self, tools: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.tools = tools.into_iter().map(|s| s.into()).collect();
+    pub fn with_tools(mut self, tools: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.set_tools(tools);
         self
     }
 }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::response::{
-    CompleteResponse, ErrorResponse, InitResponse, TextResponse, ThinkingResponse,
+    CompleteResponse, ErrorResponse, InitResponse, Response, TextResponse, ThinkingResponse,
     ToolResultResponse, ToolUseResponse,
 };
 
@@ -21,8 +21,7 @@ pub struct DefaultHandler;
 #[async_trait]
 impl Handler for DefaultHandler {}
 
-pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &crate::response::Response) {
-    use crate::response::Response;
+pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
     match response {
         Response::Text(t) => handler.on_text(t).await,
         Response::ToolUse(t) => handler.on_tool_use(t).await,

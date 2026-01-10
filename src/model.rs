@@ -1,5 +1,7 @@
 use std::fmt;
 
+use serde::Serialize;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Model {
     Sonnet,
@@ -42,5 +44,14 @@ impl From<&str> for Model {
 impl From<String> for Model {
     fn from(s: String) -> Self {
         Self::from(s.as_str())
+    }
+}
+
+impl Serialize for Model {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
     }
 }
