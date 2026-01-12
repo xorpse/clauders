@@ -17,12 +17,16 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("no output schema configured; use Options::with_json_schema::<T>() when creating the client")]
+    NoSchemaConfigured,
     #[error("permission denied for tool '{tool_name}': {message}")]
     PermissionDenied { tool_name: String, message: String },
     #[error("process error: {0}")]
     ProcessError(String),
     #[error("protocol error: {0}")]
     ProtocolError(String),
+    #[error("schema mismatch: configured schema does not match requested type")]
+    SchemaMismatch { expected: String, configured: String },
     #[error("timeout: {0}")]
     Timeout(String),
 }

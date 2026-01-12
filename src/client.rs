@@ -5,6 +5,8 @@ use std::sync::Arc;
 
 use async_stream::stream;
 use futures::StreamExt;
+use schemars::JsonSchema;
+use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tokio::sync::{Mutex, RwLock};
 use tokio_stream::Stream;
@@ -18,7 +20,7 @@ use crate::proto::{
     ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent,
     control::{HookCallbackRequest, Request, ResponseEnvelope},
 };
-use crate::response::Response;
+use crate::response::{Response, Responses};
 use crate::transport::Transport;
 
 /// Tracks which hook type and index a callback ID maps to.
@@ -54,6 +56,7 @@ pub struct Client {
     mcp_servers: HashMap<String, Arc<McpServer>>,
     hooks: Option<Hooks>,
     hook_callbacks: HashMap<String, HookCallbackEntry>,
+    json_schema: Option<String>,
 }
 
 impl Client {
@@ -67,6 +70,7 @@ impl Client {
 
         let mcp_servers = options.mcp_servers().clone();
         let hooks = options.take_hooks();
+        let json_schema = options.json_schema().map(|s| s.to_owned());
 
         // Build hook callback map
         let hook_callbacks = Self::build_hook_callbacks(&hooks);
@@ -78,6 +82,7 @@ impl Client {
             mcp_servers,
             hooks,
             hook_callbacks,
+            json_schema,
         };
 
         // Send initialize control request to enable control protocol
@@ -440,6 +445,96 @@ impl Client {
             responses.push(result?);
         }
         Ok(responses)
+    }
+
+    /// Sends a query and receives all responses, returning the text content and full responses.
+    ///
+    /// This is a convenience method that combines `query` and `receive_all`,
+    /// returning the concatenated text content along with the complete response collection.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use clauders::{Client, Options};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), clauders::Error> {
+    ///     let client = Client::new(Options::new()).await?;
+    ///     let (text, responses) = client.query_once("What is 2 + 2?").await?;
+    ///     println!("Response: {}", text);
+    ///     println!("Total responses: {}", responses.len());
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn query_once(&self, prompt: &str) -> Result<(String, Responses), Error> {
+        self.query(prompt).await?;
+        let responses: Responses = self.receive_all().await?.into();
+        let text = responses.text_content();
+        Ok((text, responses))
+    }
+
+    /// Sends a query and deserializes the structured output into the specified type.
+    ///
+    /// This method requires that the client was created with a JSON schema matching
+    /// the type `T`. If no schema was configured or the schema doesn't match,
+    /// an error is returned.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use clauders::{Client, Options};
+    /// use schemars::JsonSchema;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Debug, Deserialize, JsonSchema)]
+    /// struct Analysis {
+    ///     summary: String,
+    ///     score: i32,
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), clauders::Error> {
+    ///     let client = Client::new(
+    ///         Options::new().with_json_schema::<Analysis>()
+    ///     ).await?;
+    ///     let (analysis, responses) = client.query_once_as::<Analysis>("Analyze this text").await?;
+    ///     println!("Summary: {}", analysis.summary);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn query_once_as<T>(&self, prompt: &str) -> Result<(T, Responses), Error>
+    where
+        T: DeserializeOwned + JsonSchema,
+    {
+        // Verify schema matches
+        let expected_schema = crate::util::schema_for::<T>().to_string();
+        match &self.json_schema {
+            Some(configured) if configured == &expected_schema => {}
+            Some(configured) => {
+                return Err(Error::SchemaMismatch {
+                    expected: expected_schema,
+                    configured: configured.clone(),
+                });
+            }
+            None => {
+                return Err(Error::NoSchemaConfigured);
+            }
+        }
+
+        self.query(prompt).await?;
+        let responses: Responses = self.receive_all().await?.into();
+
+        let completion = responses
+            .completion()
+            .ok_or_else(|| Error::ProtocolError("no completion response".to_owned()))?;
+
+        let structured_output = completion
+            .structured_output()
+            .ok_or_else(|| Error::ProtocolError("no structured output in response".to_owned()))?;
+
+        let result = serde_json::from_value::<T>(structured_output.clone())?;
+
+        Ok((result, responses))
     }
 
     /// Sends an interrupt signal to stop the current operation.

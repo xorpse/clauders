@@ -136,8 +136,12 @@ impl Options {
         self
     }
 
+    pub(crate) fn json_schema(&self) -> Option<&str> {
+        self.json_schema.as_deref()
+    }
+
     #[must_use]
-    pub fn json_schema<T: JsonSchema>(mut self) -> Self {
+    pub fn with_json_schema<T: JsonSchema>(mut self) -> Self {
         self.json_schema = Some(util::schema_for::<T>().to_string());
         self
     }

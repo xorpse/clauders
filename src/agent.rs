@@ -16,8 +16,8 @@ use crate::model::Model;
 /// use clauders::{Agent, Model};
 ///
 /// let agent = Agent::new("Reviews code for issues", "You are a code reviewer")
-///     .model(Model::Sonnet)
-///     .tools(["Read", "Grep"]);
+///     .with_model(Model::Sonnet)
+///     .with_tools(["Read", "Grep"]);
 /// ```
 #[derive(Debug, Clone, Serialize)]
 pub struct Agent {
