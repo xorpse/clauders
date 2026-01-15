@@ -35,7 +35,6 @@ pub mod permissions;
 pub mod proto;
 pub mod response;
 pub mod tool;
-pub mod tool_input;
 pub mod transport;
 mod util;
 
@@ -60,5 +59,4 @@ pub use response::{
     CompleteResponse, ErrorResponse, InitResponse, Response, Responses, TextResponse,
     ThinkingResponse, ToolResultResponse, ToolUseResponse,
 };
-pub use tool::{Tool, ToolError};
-pub use tool_input::ToolInput;
+pub use tool::{Tool, ToolError, ToolInput};

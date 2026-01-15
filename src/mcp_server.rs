@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use crate::tool::Tool;
-use crate::tool_input::ToolInput;
+use crate::tool::{Tool, ToolInput};
 
 #[derive(Debug)]
 pub struct McpServer {

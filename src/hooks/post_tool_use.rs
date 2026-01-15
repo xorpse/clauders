@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use serde_json::{json, Value};
 
-use crate::tool_input::ToolInput;
+use crate::tool::ToolInput;
 
 #[derive(Debug, Clone)]
 pub struct PostToolUseInput {

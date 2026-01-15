@@ -1,5 +1,3 @@
-//! Client for interacting with the Claude Code CLI.
-
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 

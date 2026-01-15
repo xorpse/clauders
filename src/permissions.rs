@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::tool_input::ToolInput;
+use crate::tool::ToolInput;
 
 pub use crate::proto::PermissionMode;
 
