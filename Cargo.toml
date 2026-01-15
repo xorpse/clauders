@@ -1,12 +1,12 @@
 [package]
 name = "clauders"
+authors = ["Sam L. Thomas <s@ghost.sh>"]
 version = "0.1.0"
 edition = "2024"
 description = "Rust bindings for Claude Code CLI"
-license = "ISC"
-repository = "https://github.com/avsm/ocaml-claudeio"
+license = "MIT"
+repository = "https://github.com/xorpse/clauders"
 keywords = ["claude", "ai", "anthropic", "cli"]
-categories = ["api-bindings", "asynchronous"]
 
 [dependencies]
 anyhow = "1"
