@@ -25,6 +25,7 @@
 
 pub mod agent;
 pub mod client;
+pub mod conversation;
 pub mod error;
 pub mod handler;
 pub mod hooks;
@@ -40,6 +41,7 @@ mod util;
 
 pub use agent::Agent;
 pub use client::Client;
+pub use conversation::{Conversation, Turn, TurnBuilder};
 pub use error::Error;
 pub use handler::{DefaultHandler, Handler, dispatch};
 pub use hooks::{

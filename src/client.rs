@@ -10,6 +10,7 @@ use tokio::sync::{Mutex, RwLock};
 use tokio_stream::Stream;
 use tracing::{debug, info, warn};
 
+use crate::conversation::Conversation;
 use crate::error::Error;
 use crate::hooks::{Hooks, PostToolUseInput, PreToolUseInput, StopInput, UserPromptSubmitInput};
 use crate::mcp_server::McpServer;
@@ -201,6 +202,41 @@ impl Client {
     /// Returns the current session ID, if one has been established.
     pub async fn session_id(&self) -> Option<String> {
         self.session_id.read().await.clone()
+    }
+
+    /// Creates a new conversation session for multi-turn interactions.
+    ///
+    /// The returned [`Conversation`] provides a builder-style API for:
+    /// - Sending queries with streaming callbacks
+    /// - Managing conversation history
+    /// - Structured output deserialization
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use clauders::{Client, Options};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), clauders::Error> {
+    ///     let client = Client::new(Options::new()).await?;
+    ///     let mut conv = client.conversation();
+    ///
+    ///     // Simple multi-turn
+    ///     let response1 = conv.say("What is Rust?").await?;
+    ///     let response2 = conv.say("What about ownership?").await?;
+    ///
+    ///     // With streaming callback
+    ///     let text = conv
+    ///         .turn("Explain async/await")
+    ///         .on_text(|chunk| print!("{}", chunk))
+    ///         .send_text()
+    ///         .await?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn conversation(&self) -> Conversation<'_> {
+        Conversation::new(self)
     }
 
     /// Sends a text query to Claude.
