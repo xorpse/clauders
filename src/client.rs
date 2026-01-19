@@ -71,7 +71,6 @@ impl Client {
         let hooks = options.take_hooks();
         let json_schema = options.json_schema().map(|s| s.to_owned());
 
-        // Build hook callback map
         let hook_callbacks = Self::build_hook_callbacks(&hooks);
 
         let client = Self {
@@ -84,7 +83,6 @@ impl Client {
             json_schema,
         };
 
-        // Send initialize control request to enable control protocol
         client.initialize().await?;
 
         Ok(client)
@@ -540,8 +538,8 @@ impl Client {
     where
         T: DeserializeOwned + JsonSchema,
     {
-        // Verify schema matches
-        let expected_schema = crate::util::schema_for::<T>().to_string();
+        // Verify schema matches (use same stripped format as with_json_schema)
+        let expected_schema = crate::util::schema_for_structured_output::<T>().to_string();
         match &self.json_schema {
             Some(configured) if configured == &expected_schema => {}
             Some(configured) => {
@@ -558,15 +556,14 @@ impl Client {
         self.query(prompt).await?;
         let responses: Responses = self.receive_all().await?.into();
 
-        let completion = responses
+        // The structured output comes from the result message's structuredOutput field
+        let structured_output = responses
             .completion()
-            .ok_or_else(|| Error::ProtocolError("no completion response".to_owned()))?;
-
-        let structured_output = completion
-            .structured_output()
+            .and_then(|c| c.structured_output())
+            .cloned()
             .ok_or_else(|| Error::ProtocolError("no structured output in response".to_owned()))?;
 
-        let result = serde_json::from_value::<T>(structured_output.clone())?;
+        let result = serde_json::from_value::<T>(structured_output)?;
 
         Ok((result, responses))
     }

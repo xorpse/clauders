@@ -365,15 +365,14 @@ impl<'a, 'c> TurnBuilder<'a, 'c> {
     {
         let responses = self.send().await?;
 
-        let completion = responses
+        // The structured output comes from the result message's structuredOutput field
+        let structured_output = responses
             .completion()
-            .ok_or_else(|| Error::ProtocolError("no completion response".to_owned()))?;
-
-        let structured_output = completion
-            .structured_output()
+            .and_then(|c| c.structured_output())
+            .cloned()
             .ok_or_else(|| Error::ProtocolError("no structured output in response".to_owned()))?;
 
-        let result = serde_json::from_value::<T>(structured_output.clone())?;
+        let result = serde_json::from_value::<T>(structured_output)?;
 
         Ok(result)
     }

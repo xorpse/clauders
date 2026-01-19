@@ -142,7 +142,7 @@ impl Options {
 
     #[must_use]
     pub fn with_json_schema<T: JsonSchema>(mut self) -> Self {
-        self.json_schema = Some(util::schema_for::<T>().to_string());
+        self.json_schema = Some(util::schema_for_structured_output::<T>().to_string());
         self
     }
 

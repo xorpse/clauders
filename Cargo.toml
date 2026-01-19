@@ -33,3 +33,7 @@ path = "examples/file_summariser.rs"
 [[example]]
 name = "network_report"
 path = "examples/network_report.rs"
+
+[[example]]
+name = "sentiment_analysis"
+path = "examples/sentiment_analysis.rs"
