@@ -36,6 +36,15 @@ use crate::client::Client;
 use crate::error::Error;
 use crate::response::{Responses, ToolUseResponse};
 
+/// Callback type for text streaming events.
+pub(crate) type TextCallback<'a> = Box<dyn FnMut(&str) + Send + 'a>;
+
+/// Callback type for thinking content streaming events.
+pub(crate) type ThinkingCallback<'a> = Box<dyn FnMut(&str) + Send + 'a>;
+
+/// Callback type for tool use events.
+pub(crate) type ToolUseCallback<'a> = Box<dyn FnMut(&ToolUseResponse) + Send + 'a>;
+
 /// A multi-turn conversation session with builder configuration.
 ///
 /// Tracks conversation history on the client side while the CLI manages
@@ -73,9 +82,9 @@ impl Turn {
 pub struct TurnBuilder<'a, 'c> {
     conversation: &'a mut Conversation<'c>,
     prompt: String,
-    on_text: Option<Box<dyn FnMut(&str) + Send + 'a>>,
-    on_thinking: Option<Box<dyn FnMut(&str) + Send + 'a>>,
-    on_tool_use: Option<Box<dyn FnMut(&ToolUseResponse) + Send + 'a>>,
+    on_text: Option<TextCallback<'a>>,
+    on_thinking: Option<ThinkingCallback<'a>>,
+    on_tool_use: Option<ToolUseCallback<'a>>,
     collect: bool,
 }
 
@@ -288,20 +297,20 @@ impl<'a, 'c> TurnBuilder<'a, 'c> {
             let response = result?;
 
             // Invoke callbacks
-            if let Some(text) = response.as_text() {
-                if let Some(ref mut cb) = on_text {
-                    cb(text.content());
-                }
+            if let Some(text) = response.as_text()
+                && let Some(ref mut cb) = on_text
+            {
+                cb(text.content());
             }
-            if let Some(thinking) = response.as_thinking() {
-                if let Some(ref mut cb) = on_thinking {
-                    cb(thinking.content());
-                }
+            if let Some(thinking) = response.as_thinking()
+                && let Some(ref mut cb) = on_thinking
+            {
+                cb(thinking.content());
             }
-            if let Some(tool_use) = response.as_tool_use() {
-                if let Some(ref mut cb) = on_tool_use {
-                    cb(tool_use);
-                }
+            if let Some(tool_use) = response.as_tool_use()
+                && let Some(ref mut cb) = on_tool_use
+            {
+                cb(tool_use);
             }
 
             // Collect response if enabled

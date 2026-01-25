@@ -500,7 +500,7 @@ impl Client {
     /// ```
     pub async fn query_once(&self, prompt: &str) -> Result<(String, Responses), Error> {
         self.query(prompt).await?;
-        let responses: Responses = self.receive_all().await?.into();
+        let responses = Responses::from(self.receive_all().await?);
         let text = responses.text_content();
         Ok((text, responses))
     }
@@ -554,7 +554,7 @@ impl Client {
         }
 
         self.query(prompt).await?;
-        let responses: Responses = self.receive_all().await?.into();
+        let responses = Responses::from(self.receive_all().await?);
 
         // The structured output comes from the result message's structuredOutput field
         let structured_output = responses
