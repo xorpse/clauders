@@ -172,6 +172,10 @@ impl Transport {
             cmd.extend(["--allowedTools".to_owned(), options.allowed_tools.join(",")]);
         }
 
+        if options.json_schema.is_some() {
+            cmd.extend(["--allowedTools".to_owned(), "StructuredOutput".to_owned()]);
+        }
+
         if !options.disallowed_tools.is_empty() {
             cmd.extend([
                 "--disallowedTools".to_owned(),

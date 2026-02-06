@@ -531,8 +531,8 @@ impl Client {
     where
         T: DeserializeOwned + JsonSchema,
     {
-        // Verify schema matches
-        let expected_schema = crate::util::schema_for::<T>().to_string();
+        // Verify schema matches (use same stripped format as with_json_schema)
+        let expected_schema = crate::util::schema_for_structured_output::<T>().to_string();
         match &self.json_schema {
             Some(configured) if configured == &expected_schema => {}
             Some(configured) => {
@@ -549,15 +549,14 @@ impl Client {
         self.query(prompt).await?;
         let responses = Responses::from(self.receive_all().await?);
 
-        let completion = responses
+        // The structured output comes from the result message's structuredOutput field
+        let structured_output = responses
             .completion()
-            .ok_or_else(|| Error::ProtocolError("no completion response".to_owned()))?;
-
-        let structured_output = completion
-            .structured_output()
+            .and_then(|c| c.structured_output())
+            .cloned()
             .ok_or_else(|| Error::ProtocolError("no structured output in response".to_owned()))?;
 
-        let result = serde_json::from_value::<T>(structured_output.clone())?;
+        let result = serde_json::from_value::<T>(structured_output)?;
 
         Ok((result, responses))
     }
