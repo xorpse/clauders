@@ -76,10 +76,6 @@ impl ToolInput {
         Self(value)
     }
 
-    pub fn from_value(value: Value) -> Self {
-        Self(value)
-    }
-
     pub fn empty() -> Self {
         Self(Value::Object(Map::new()))
     }
@@ -88,15 +84,7 @@ impl ToolInput {
         &self.0
     }
 
-    pub fn as_json(&self) -> &Value {
-        &self.0
-    }
-
     pub fn into_value(self) -> Value {
-        self.0
-    }
-
-    pub fn into_json(self) -> Value {
         self.0
     }
 
@@ -466,7 +454,7 @@ mod tests {
             Ok(Tool::text_result(&format!("{}", input.a + input.b)))
         });
 
-        let input = ToolInput::from_value(json!({"a": 5, "b": 3}));
+        let input = ToolInput::new(json!({"a": 5, "b": 3}));
         let result = tool.call(input).await.unwrap();
 
         let text = result
@@ -488,7 +476,7 @@ mod tests {
             Ok(Tool::text_result("ok"))
         });
 
-        let input = ToolInput::from_value(json!({}));
+        let input = ToolInput::new(json!({}));
         let result = tool.call(input).await;
 
         assert!(result.is_err());
@@ -684,7 +672,7 @@ mod tests {
             Ok(Tool::text_result(&format!("Weather in {}", input.location)))
         });
 
-        let input = ToolInput::from_value(json!({"location": "San Francisco, CA"}));
+        let input = ToolInput::new(json!({"location": "San Francisco, CA"}));
         let result = tool.call(input).await.unwrap();
         let text = result
             .as_array()
@@ -693,7 +681,7 @@ mod tests {
             .and_then(|v| v.as_str());
         assert_eq!(text, Some("Weather in San Francisco, CA"));
 
-        let input_with_unit = ToolInput::from_value(json!({"location": "NYC", "unit": "celsius"}));
+        let input_with_unit = ToolInput::new(json!({"location": "NYC", "unit": "celsius"}));
         let result = tool.call(input_with_unit).await.unwrap();
         let text = result
             .as_array()

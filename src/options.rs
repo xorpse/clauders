@@ -16,7 +16,6 @@ use crate::util;
 pub struct Options {
     allowed_tools: Vec<String>,
     disallowed_tools: Vec<String>,
-    max_thinking_tokens: i32,
     system_prompt: Option<String>,
     append_system_prompt: Option<String>,
     permission_mode: Option<PermissionMode>,
@@ -34,10 +33,7 @@ pub struct Options {
 
 impl Options {
     pub fn new() -> Self {
-        Self {
-            max_thinking_tokens: 8000,
-            ..Default::default()
-        }
+        Self::default()
     }
 
     #[must_use]
@@ -73,12 +69,6 @@ impl Options {
     #[must_use]
     pub fn with_disallowed_tools(mut self, tools: Vec<String>) -> Self {
         self.disallowed_tools = tools;
-        self
-    }
-
-    #[must_use]
-    pub fn max_thinking_tokens(mut self, tokens: i32) -> Self {
-        self.max_thinking_tokens = tokens.max(1);
         self
     }
 

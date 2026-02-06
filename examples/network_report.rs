@@ -7,7 +7,6 @@ use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Input for the ping tool
 #[derive(Debug, JsonSchema, Deserialize)]
 struct PingInput {
     /// The hostname or IP address to ping
@@ -21,7 +20,6 @@ fn default_count() -> u32 {
     4
 }
 
-/// Input for the DNS lookup tool
 #[derive(Debug, JsonSchema, Deserialize)]
 struct DnsLookupInput {
     /// The hostname to look up
@@ -34,7 +32,6 @@ struct DnsLookupOutput {
     records: Vec<String>,
 }
 
-/// Input for the traceroute tool
 #[derive(Debug, JsonSchema, Deserialize)]
 struct TracerouteInput {
     /// The hostname or IP address to trace
@@ -133,7 +130,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(50));
     println!();
 
-    // Create MCP server with network diagnostic tools
     let network_server = Arc::new(McpServer::new(
         "network_tools",
         vec![ping_tool(), dns_lookup_tool(), traceroute_tool()],
@@ -184,20 +180,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if let Some(tool_use) = response.as_tool_use() {
-            current_tool = tool_use.name().to_string();
+            current_tool = tool_use.name().to_owned();
             println!();
             println!("[Tool: {}]", tool_use.name());
         }
 
         if let Some(tool_result) = response.as_tool_result() {
-            if let Some(content) = tool_result.content() {
-                if let Some(text) = extract_tool_text(content) {
-                    let preview = truncate(&text.replace('\n', " "), 80);
-                    if tool_result.is_error() {
-                        println!("[Error: {}]", preview);
-                    } else {
-                        println!("[Output: {}]", preview);
-                    }
+            if let Some(content) = tool_result.content()
+                && let Some(text) = extract_tool_text(content)
+            {
+                let preview = truncate(&text.replace('\n', " "), 80);
+                if tool_result.is_error() {
+                    println!("[Error: {}]", preview);
+                } else {
+                    println!("[Output: {}]", preview);
                 }
             }
             current_tool.clear();
@@ -232,7 +228,7 @@ fn truncate(s: &str, max_len: usize) -> String {
     if s.len() > max_len {
         format!("{}...", &s[..max_len])
     } else {
-        s.to_string()
+        s.to_owned()
     }
 }
 
@@ -242,5 +238,5 @@ fn extract_tool_text(content: &serde_json::Value) -> Option<String> {
         .and_then(|a| a.first())
         .and_then(|v| v.get("text"))
         .and_then(|t| t.as_str())
-        .map(|s| s.to_string())
+        .map(|s| s.to_owned())
 }

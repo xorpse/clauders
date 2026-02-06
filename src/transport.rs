@@ -5,11 +5,11 @@ use std::process::Stdio;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
-use tracing::{debug, error, info, warn};
 
 use crate::agent::Agent;
 use crate::error::Error;
-use crate::proto::{Incoming, RequestEnvelope, control::ResponseEnvelope};
+use crate::proto::{Incoming, RequestEnvelope};
+use crate::proto::control::ResponseEnvelope;
 
 pub struct Transport {
     child: Child,
@@ -109,7 +109,7 @@ impl Transport {
         let cmd = Self::build_command(options);
         let env = Self::build_env(options);
 
-        info!(cmd = ?cmd, "spawning claude CLI");
+        tracing::info!(cmd = ?cmd, "spawning claude CLI");
 
         let mut child = Command::new("claude")
             .args(&cmd)
@@ -120,7 +120,7 @@ impl Transport {
             .current_dir(options.cwd.as_deref().unwrap_or_else(|| std::path::Path::new(".")))
             .spawn()
             .map_err(|e| {
-                error!(error = %e, "failed to spawn claude CLI");
+                tracing::error!(error = %e, "failed to spawn claude CLI");
                 Error::CliNotFound(format!(
                     "failed to spawn claude CLI: {e}; make sure 'claude' is installed and authenticated",
                 ))
@@ -243,9 +243,9 @@ impl Transport {
             line.clear();
             match reader.read_line(&mut line).await {
                 Ok(0) => break,
-                Ok(_) => warn!(target: "claude_cli", "{}", line.trim_end()),
+                Ok(_) => tracing::warn!(target: "claude_cli", "{}", line.trim_end()),
                 Err(e) => {
-                    error!(error = %e, "failed to read stderr");
+                    tracing::error!(error = %e, "failed to read stderr");
                     break;
                 }
             }
@@ -258,7 +258,7 @@ impl Transport {
             .as_mut()
             .ok_or_else(|| Error::ProcessError("stdin closed".to_owned()))?;
         let data = serde_json::to_string(json)?;
-        debug!(data = %data, "sending");
+        tracing::debug!(data = %data, "sending");
         stdin.write_all(data.as_bytes()).await?;
         stdin.write_all(b"\n").await?;
         stdin.flush().await?;
@@ -280,7 +280,7 @@ impl Transport {
         match self.stdout.read_line(&mut line).await? {
             0 => Ok(None),
             _ => {
-                debug!(line = %line.trim(), "received");
+                tracing::debug!(line = %line.trim(), "received");
                 Ok(Some(line))
             }
         }
@@ -290,7 +290,7 @@ impl Transport {
         match self.receive_line().await? {
             Some(line) => {
                 let incoming = serde_json::from_str::<Incoming>(&line).map_err(|e| {
-                    error!(line = %line, error = %e, "failed to parse incoming message");
+                    tracing::error!(line = %line, error = %e, "failed to parse incoming message");
                     Error::ProtocolError(format!("failed to parse: {e}"))
                 })?;
                 Ok(Some(incoming))
@@ -300,7 +300,7 @@ impl Transport {
     }
 
     pub async fn interrupt(&mut self) -> Result<(), Error> {
-        info!("sending interrupt signal");
+        tracing::info!("sending interrupt signal");
         let envelope = RequestEnvelope::interrupt("");
         self.send_request(&envelope).await
     }
@@ -316,7 +316,7 @@ impl Drop for Transport {
     fn drop(&mut self) {
         self.stderr_task.abort();
         if let Err(e) = self.child.start_kill() {
-            error!(error = %e, "failed to kill child process");
+            tracing::error!(error = %e, "failed to kill child process");
         }
     }
 }

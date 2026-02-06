@@ -64,6 +64,9 @@ impl Turn {
     }
 }
 
+type TextCallback<'a> = Box<dyn FnMut(&str) + Send + 'a>;
+type ToolUseCallback<'a> = Box<dyn FnMut(&ToolUseResponse) + Send + 'a>;
+
 /// Builder for configuring and executing a single conversation turn.
 ///
 /// Created by [`Conversation::turn`] and provides methods for:
@@ -73,9 +76,9 @@ impl Turn {
 pub struct TurnBuilder<'a, 'c> {
     conversation: &'a mut Conversation<'c>,
     prompt: String,
-    on_text: Option<Box<dyn FnMut(&str) + Send + 'a>>,
-    on_thinking: Option<Box<dyn FnMut(&str) + Send + 'a>>,
-    on_tool_use: Option<Box<dyn FnMut(&ToolUseResponse) + Send + 'a>>,
+    on_text: Option<TextCallback<'a>>,
+    on_thinking: Option<TextCallback<'a>>,
+    on_tool_use: Option<ToolUseCallback<'a>>,
     collect: bool,
 }
 
@@ -287,30 +290,27 @@ impl<'a, 'c> TurnBuilder<'a, 'c> {
         while let Some(result) = stream.next().await {
             let response = result?;
 
-            // Invoke callbacks
-            if let Some(text) = response.as_text() {
-                if let Some(ref mut cb) = on_text {
-                    cb(text.content());
-                }
+            if let Some(text) = response.as_text()
+                && let Some(ref mut cb) = on_text
+            {
+                cb(text.content());
             }
-            if let Some(thinking) = response.as_thinking() {
-                if let Some(ref mut cb) = on_thinking {
-                    cb(thinking.content());
-                }
+            if let Some(thinking) = response.as_thinking()
+                && let Some(ref mut cb) = on_thinking
+            {
+                cb(thinking.content());
             }
-            if let Some(tool_use) = response.as_tool_use() {
-                if let Some(ref mut cb) = on_tool_use {
-                    cb(tool_use);
-                }
+            if let Some(tool_use) = response.as_tool_use()
+                && let Some(ref mut cb) = on_tool_use
+            {
+                cb(tool_use);
             }
 
-            // Collect response if enabled
             if collect {
                 responses.push(response);
             }
         }
 
-        // Add to history
         conversation.history.push(Turn {
             prompt,
             responses: responses.clone(),

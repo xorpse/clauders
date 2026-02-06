@@ -18,7 +18,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new(Options::new()).await?;
     let mut conv = client.conversation();
 
-    // Example 1: Simple multi-turn conversation
     println!("Part 1: Simple multi-turn conversation");
     println!("--------------------------------------");
 
@@ -37,7 +36,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Conversation has {} turns.", conv.history().len());
     println!();
 
-    // Example 2: Streaming with callback
     println!("Part 2: Streaming with callback");
     println!("-------------------------------");
     print!("Streaming: ");
@@ -55,7 +53,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!();
 
-    // Example 3: Full control with multiple callbacks
     println!("Part 3: Full control with callbacks");
     println!("-----------------------------------");
 
@@ -73,13 +70,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!();
 
-    if responses.has_error() {
-        if let Some(err) = responses.first_error() {
-            eprintln!("Error: {}", err.message());
-        }
+    if responses.has_error()
+        && let Some(err) = responses.first_error()
+    {
+        eprintln!("Error: {}", err.message());
     }
 
-    // Show completion info
     if let Some(complete) = responses.completion() {
         println!();
         println!("---");
@@ -93,7 +89,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Show conversation summary
     println!();
     println!("Conversation Summary");
     println!("--------------------");

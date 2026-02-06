@@ -8,17 +8,14 @@ use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tokio::sync::{Mutex, RwLock};
 use tokio_stream::Stream;
-use tracing::{debug, info, warn};
 
 use crate::conversation::Conversation;
 use crate::error::Error;
 use crate::hooks::{Hooks, PostToolUseInput, PreToolUseInput, StopInput, UserPromptSubmitInput};
 use crate::mcp_server::McpServer;
 use crate::options::Options;
-use crate::proto::{
-    ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent,
-    control::{HookCallbackRequest, Request, ResponseEnvelope},
-};
+use crate::proto::{ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent};
+use crate::proto::control::{HookCallbackRequest, Request, ResponseEnvelope};
 use crate::response::{Response, Responses};
 use crate::transport::Transport;
 
@@ -71,7 +68,6 @@ impl Client {
         let hooks = options.take_hooks();
         let json_schema = options.json_schema().map(|s| s.to_owned());
 
-        // Build hook callback map
         let hook_callbacks = Self::build_hook_callbacks(&hooks);
 
         let client = Self {
@@ -84,7 +80,6 @@ impl Client {
             json_schema,
         };
 
-        // Send initialize control request to enable control protocol
         client.initialize().await?;
 
         Ok(client)
@@ -140,7 +135,7 @@ impl Client {
         let request = crate::proto::Request::Initialize(init_request);
         let envelope = RequestEnvelope::new(request);
         self.transport.lock().await.send_request(&envelope).await?;
-        debug!("sent initialize control request");
+        tracing::debug!("sent initialize control request");
         Ok(())
     }
 
@@ -151,7 +146,6 @@ impl Client {
 
         let mut result = json!({});
 
-        // PreToolUse: [{ "matcher": "pattern", "callbackIds": ["hook_0"] }, ...]
         if hooks.has_pre_tool_use_hooks() {
             let mut pre_tool_use = Vec::new();
             for (id, (pattern, _)) in hooks.pre_tool_use_hooks().enumerate() {
@@ -163,7 +157,6 @@ impl Client {
             result["PreToolUse"] = json!(pre_tool_use);
         }
 
-        // PostToolUse: [{ "matcher": "pattern", "callbackIds": ["hook_N"] }, ...]
         if hooks.has_post_tool_use_hooks() {
             let mut post_tool_use = Vec::new();
             let base_id = hooks.pre_tool_use_hooks().len();
@@ -176,7 +169,6 @@ impl Client {
             result["PostToolUse"] = json!(post_tool_use);
         }
 
-        // UserPromptSubmit: ["hook_N", ...]
         if hooks.has_user_prompt_submit_hooks() {
             let base_id = hooks.pre_tool_use_hooks().len() + hooks.post_tool_use_hooks().len();
             let ids = (0..hooks.user_prompt_submit_hooks().len())
@@ -185,7 +177,6 @@ impl Client {
             result["UserPromptSubmit"] = json!(ids);
         }
 
-        // Stop: ["hook_N", ...]
         if hooks.has_stop_hooks() {
             let base_id = hooks.pre_tool_use_hooks().len()
                 + hooks.post_tool_use_hooks().len()
@@ -264,7 +255,7 @@ impl Client {
     ) -> Result<(), Error> {
         let mut responded = self.responded_tool_ids.lock().await;
         if responded.contains(tool_use_id) {
-            warn!(tool_use_id, "already responded to tool, skipping");
+            tracing::warn!(tool_use_id, "already responded to tool, skipping");
             return Ok(());
         }
 
@@ -317,7 +308,7 @@ impl Client {
                             };
                             let mut transport = self.transport.lock().await;
                             if let Err(e) = transport.send_response(&response).await {
-                                warn!(error = %e, "failed to send control response");
+                                tracing::warn!(error = %e, "failed to send control response");
                             }
                             continue;
                         }
@@ -327,7 +318,7 @@ impl Client {
                                 && let Some(sid) = init.session_id()
                             {
                                 *self.session_id.write().await = Some(sid.to_owned());
-                                debug!(session_id = %sid, "session initialized");
+                                tracing::debug!(session_id = %sid, "session initialized");
                             }
 
                             for response in Response::from_message(&msg) {
@@ -340,7 +331,7 @@ impl Client {
                         }
                     }
                     Ok(None) => {
-                        info!("stream ended (EOF)");
+                        tracing::info!("stream ended (EOF)");
                         return;
                     }
                     Err(e) => {
@@ -358,7 +349,7 @@ impl Client {
         server_name: &str,
         message: &Value,
     ) -> ResponseEnvelope {
-        debug!(server_name, "handling MCP message");
+        tracing::debug!(server_name, "handling MCP message");
 
         match self.mcp_servers.get(server_name) {
             Some(server) => {
@@ -368,7 +359,7 @@ impl Client {
                 ResponseEnvelope::success(request_id, Some(response_data))
             }
             None => {
-                warn!(server_name, "MCP server not found");
+                tracing::warn!(server_name, "MCP server not found");
                 let error_response = json!({
                     "mcp_response": {
                         "jsonrpc": "2.0",
@@ -392,15 +383,15 @@ impl Client {
         let callback_id = hook_req.callback_id();
         let input = hook_req.input();
 
-        debug!(callback_id, "handling hook callback");
+        tracing::debug!(callback_id, "handling hook callback");
 
         let Some(entry) = self.hook_callbacks.get(callback_id) else {
-            warn!(callback_id, "hook callback not found");
+            tracing::warn!(callback_id, "hook callback not found");
             return ResponseEnvelope::success(request_id, Some(json!({})));
         };
 
         let Some(hooks) = &self.hooks else {
-            warn!("hooks not available");
+            tracing::warn!("hooks not available");
             return ResponseEnvelope::success(request_id, Some(json!({})));
         };
 
@@ -502,7 +493,7 @@ impl Client {
     /// ```
     pub async fn query_once(&self, prompt: &str) -> Result<(String, Responses), Error> {
         self.query(prompt).await?;
-        let responses: Responses = self.receive_all().await?.into();
+        let responses = Responses::from(self.receive_all().await?);
         let text = responses.text_content();
         Ok((text, responses))
     }
@@ -556,7 +547,7 @@ impl Client {
         }
 
         self.query(prompt).await?;
-        let responses: Responses = self.receive_all().await?.into();
+        let responses = Responses::from(self.receive_all().await?);
 
         let completion = responses
             .completion()
