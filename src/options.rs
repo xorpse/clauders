@@ -12,10 +12,18 @@ use crate::proto::PermissionMode;
 use crate::transport::TransportOptions;
 use crate::util;
 
+#[derive(Debug, Clone)]
+pub(crate) enum Tools {
+    None,
+    Default,
+    List(Vec<String>),
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Options {
     allowed_tools: Vec<String>,
     disallowed_tools: Vec<String>,
+    tools: Option<Tools>,
     system_prompt: Option<String>,
     append_system_prompt: Option<String>,
     permission_mode: Option<PermissionMode>,
@@ -29,6 +37,8 @@ pub struct Options {
     mcp_servers: HashMap<String, Arc<McpServer>>,
     agents: HashMap<String, Agent>,
     hooks: Option<Hooks>,
+    strict_mcp_config: bool,
+    disable_slash_commands: bool,
 }
 
 impl Options {
@@ -69,6 +79,36 @@ impl Options {
     #[must_use]
     pub fn with_disallowed_tools(mut self, tools: Vec<String>) -> Self {
         self.disallowed_tools = tools;
+        self
+    }
+
+    #[must_use]
+    pub fn tools(mut self, tools: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        match &mut self.tools {
+            Some(Tools::List(list)) => list.extend(tools.into_iter().map(Into::into)),
+            _ => self.tools = Some(Tools::List(tools.into_iter().map(Into::into).collect())),
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn tool(mut self, tool: impl Into<String>) -> Self {
+        match &mut self.tools {
+            Some(Tools::List(list)) => list.push(tool.into()),
+            _ => self.tools = Some(Tools::List(vec![tool.into()])),
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn disable_tools(mut self) -> Self {
+        self.tools = Some(Tools::None);
+        self
+    }
+
+    #[must_use]
+    pub fn default_tools(mut self) -> Self {
+        self.tools = Some(Tools::Default);
         self
     }
 
@@ -170,6 +210,18 @@ impl Options {
         self
     }
 
+    #[must_use]
+    pub fn strict_mcp_config(mut self, enabled: bool) -> Self {
+        self.strict_mcp_config = enabled;
+        self
+    }
+
+    #[must_use]
+    pub fn disable_slash_commands(mut self, enabled: bool) -> Self {
+        self.disable_slash_commands = enabled;
+        self
+    }
+
     pub(crate) fn mcp_servers(&self) -> &HashMap<String, Arc<McpServer>> {
         &self.mcp_servers
     }
@@ -219,8 +271,13 @@ impl Options {
         if let Some(s) = &self.json_schema {
             builder.json_schema(s.clone());
         }
+        if let Some(t) = &self.tools {
+            builder.tools(t.clone());
+        }
 
         builder.agents(self.agents.clone());
+        builder.strict_mcp_config(self.strict_mcp_config);
+        builder.disable_slash_commands(self.disable_slash_commands);
 
         builder.build().expect("all fields have defaults")
     }

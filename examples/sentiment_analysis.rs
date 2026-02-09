@@ -29,7 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::new(
         Options::new()
-            .model(Model::Haiku)
+            .model(Model::Sonnet)
+            .disable_tools()
+            .disable_slash_commands(true)
+            .strict_mcp_config(true)
+            .debug(true)
             .with_json_schema::<SentimentResult>(),
     )
     .await?;

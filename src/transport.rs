@@ -8,6 +8,7 @@ use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 
 use crate::agent::Agent;
 use crate::error::Error;
+use crate::options::Tools;
 use crate::proto::{Incoming, RequestEnvelope};
 use crate::proto::control::ResponseEnvelope;
 
@@ -32,6 +33,7 @@ impl std::fmt::Debug for Transport {
 pub struct TransportOptions {
     allowed_tools: Vec<String>,
     disallowed_tools: Vec<String>,
+    tools: Option<Tools>,
     model: Option<String>,
     fallback_model: Option<String>,
     system_prompt: Option<String>,
@@ -44,6 +46,8 @@ pub struct TransportOptions {
     json_schema: Option<String>,
     mcp_server_names: Vec<String>,
     agents: HashMap<String, Agent>,
+    strict_mcp_config: bool,
+    disable_slash_commands: bool,
 }
 
 impl TransportOptions {
@@ -101,6 +105,43 @@ impl TransportOptions {
 
     pub fn agents(&self) -> &HashMap<String, Agent> {
         &self.agents
+    }
+
+    pub fn tools(&self) -> impl Iterator<Item = &str> {
+        ToolsIter::new(self.tools.as_ref())
+    }
+}
+
+enum ToolsIter<'a> {
+    Empty,
+    Once(&'static str),
+    List(std::slice::Iter<'a, String>),
+}
+
+impl<'a> ToolsIter<'a> {
+    fn new(tools: Option<&'a Tools>) -> Self {
+        match tools {
+            None => Self::Empty,
+            Some(Tools::None) => Self::Once(""),
+            Some(Tools::Default) => Self::Once("default"),
+            Some(Tools::List(list)) => Self::List(list.iter()),
+        }
+    }
+}
+
+impl<'a> Iterator for ToolsIter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Empty => None,
+            Self::Once(s) => {
+                let s = *s;
+                *self = Self::Empty;
+                Some(s)
+            }
+            Self::List(iter) => iter.next().map(String::as_str),
+        }
     }
 }
 
@@ -183,6 +224,17 @@ impl Transport {
             ]);
         }
 
+        if let Some(tools) = &options.tools {
+            cmd.extend([
+                "--tools".to_owned(),
+                match tools {
+                    Tools::None => String::new(),
+                    Tools::Default => "default".to_owned(),
+                    Tools::List(list) => list.join(","),
+                },
+            ]);
+        }
+
         if let Some(model) = &options.model {
             cmd.extend(["--model".to_owned(), model.clone()]);
         }
@@ -217,6 +269,14 @@ impl Transport {
                 "--mcp-config".to_owned(),
                 serde_json::to_string(&mcp_config).expect("MCP config serialization"),
             ]);
+        }
+
+        if options.strict_mcp_config {
+            cmd.push("--strict-mcp-config".to_owned());
+        }
+
+        if options.disable_slash_commands {
+            cmd.push("--disable-slash-commands".to_owned());
         }
 
         if !options.agents.is_empty() {
