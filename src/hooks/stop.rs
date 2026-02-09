@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Clone)]
 pub struct StopInput {
@@ -111,5 +111,4 @@ impl StopOutput {
     }
 }
 
-pub type StopCallback =
-    Arc<dyn Fn(StopInput) -> BoxFuture<'static, StopOutput> + Send + Sync>;
+pub type StopCallback = Arc<dyn Fn(StopInput) -> BoxFuture<'static, StopOutput> + Send + Sync>;

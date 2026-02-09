@@ -13,10 +13,7 @@ struct SentimentResult {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let sentence = std::env::args()
-        .skip(1)
-        .collect::<Vec<_>>()
-        .join(" ");
+    let sentence = std::env::args().skip(1).collect::<Vec<_>>().join(" ");
 
     if sentence.is_empty() {
         eprintln!("Usage: sentiment_analysis <sentence>");

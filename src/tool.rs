@@ -472,9 +472,11 @@ mod tests {
             required_field: String,
         }
 
-        let tool = Tool::unstructured("strict", "Requires field", |_input: StrictInput| async move {
-            Ok(Tool::text_result("ok"))
-        });
+        let tool = Tool::unstructured(
+            "strict",
+            "Requires field",
+            |_input: StrictInput| async move { Ok(Tool::text_result("ok")) },
+        );
 
         let input = ToolInput::new(json!({}));
         let result = tool.call(input).await;
@@ -668,9 +670,13 @@ mod tests {
             unit: Option<String>,
         }
 
-        let tool = Tool::unstructured("get_weather", "Get weather", |input: WeatherInput| async move {
-            Ok(Tool::text_result(&format!("Weather in {}", input.location)))
-        });
+        let tool = Tool::unstructured(
+            "get_weather",
+            "Get weather",
+            |input: WeatherInput| async move {
+                Ok(Tool::text_result(&format!("Weather in {}", input.location)))
+            },
+        );
 
         let input = ToolInput::new(json!({"location": "San Francisco, CA"}));
         let result = tool.call(input).await.unwrap();

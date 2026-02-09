@@ -27,6 +27,10 @@ uuid = { version = "1", features = ["v7"] }
 tokio-test = "0.4"
 
 [[example]]
+name = "conversation"
+path = "examples/conversation.rs"
+
+[[example]]
 name = "file_summariser"
 path = "examples/file_summariser.rs"
 

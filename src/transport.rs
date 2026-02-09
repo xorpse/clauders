@@ -9,8 +9,8 @@ use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use crate::agent::Agent;
 use crate::error::Error;
 use crate::options::Tools;
-use crate::proto::{Incoming, RequestEnvelope};
 use crate::proto::control::ResponseEnvelope;
+use crate::proto::{Incoming, RequestEnvelope};
 
 pub struct Transport {
     child: Child,

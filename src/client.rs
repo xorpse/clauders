@@ -14,8 +14,10 @@ use crate::error::Error;
 use crate::hooks::{Hooks, PostToolUseInput, PreToolUseInput, StopInput, UserPromptSubmitInput};
 use crate::mcp_server::McpServer;
 use crate::options::Options;
-use crate::proto::{ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent};
 use crate::proto::control::{HookCallbackRequest, Request, ResponseEnvelope};
+use crate::proto::{
+    ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent,
+};
 use crate::response::{Response, Responses};
 use crate::transport::Transport;
 
