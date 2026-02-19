@@ -16,6 +16,7 @@ pub enum Incoming {
     Result(super::message::ResultMessage),
     ControlRequest(ControlRequestEnvelope),
     ControlResponse(ControlResponseEnvelope),
+    RateLimitEvent(RateLimitEvent),
 }
 
 /// Incoming control request envelope (CLI → SDK).
@@ -142,6 +143,68 @@ impl ControlResponseEnvelope {
     }
 }
 
+/// A rate limit event from the CLI.
+///
+/// Emitted when the API signals that rate limiting is in effect.
+/// ```json
+/// {
+///   "type": "rate_limit_event",
+///   "retry_after_ms": 5000,
+///   ...
+/// }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitEvent {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    retry_after_ms: Option<u64>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl RateLimitEvent {
+    pub fn new() -> Self {
+        Self {
+            retry_after_ms: None,
+            extra: Map::new(),
+        }
+    }
+
+    // Getters
+    pub fn retry_after_ms(&self) -> Option<u64> {
+        self.retry_after_ms
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
+    // Setters
+    pub fn set_retry_after_ms(&mut self, retry_after_ms: Option<u64>) {
+        self.retry_after_ms = retry_after_ms;
+    }
+
+    pub fn set_extra(&mut self, extra: Map<String, Value>) {
+        self.extra = extra;
+    }
+
+    // Builders
+    pub fn with_retry_after_ms(mut self, ms: u64) -> Self {
+        self.set_retry_after_ms(Some(ms));
+        self
+    }
+
+    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
+        self.set_extra(extra);
+        self
+    }
+}
+
+impl Default for RateLimitEvent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Incoming {
     pub fn to_message(&self) -> Option<Message> {
         match self {
@@ -163,6 +226,13 @@ impl Incoming {
     pub fn as_control_response(&self) -> Option<&ControlResponseEnvelope> {
         match self {
             Self::ControlResponse(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_rate_limit_event(&self) -> Option<&RateLimitEvent> {
+        match self {
+            Self::RateLimitEvent(r) => Some(r),
             _ => None,
         }
     }

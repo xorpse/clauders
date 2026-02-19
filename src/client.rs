@@ -315,6 +315,12 @@ impl Client {
                             continue;
                         }
 
+                        if let Some(rate_limit) = incoming.as_rate_limit_event() {
+                            tracing::warn!(retry_after_ms = ?rate_limit.retry_after_ms(), "rate limit event");
+                            yield Ok(Response::RateLimit(rate_limit.clone().into()));
+                            continue;
+                        }
+
                         if let Some(msg) = incoming.to_message() {
                             if let Message::System(crate::proto::SystemMessage::Init(init)) = &msg
                                 && let Some(sid) = init.session_id()

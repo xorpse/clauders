@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 
 use crate::response::{
-    CompleteResponse, ErrorResponse, InitResponse, Response, TextResponse, ThinkingResponse,
-    ToolResultResponse, ToolUseResponse,
+    CompleteResponse, ErrorResponse, InitResponse, RateLimitResponse, Response, TextResponse,
+    ThinkingResponse, ToolResultResponse, ToolUseResponse,
 };
 
 #[async_trait]
@@ -13,6 +13,7 @@ pub trait Handler: Send + Sync {
     async fn on_thinking(&self, _thinking: &ThinkingResponse) {}
     async fn on_init(&self, _init: &InitResponse) {}
     async fn on_error(&self, _error: &ErrorResponse) {}
+    async fn on_rate_limit(&self, _rate_limit: &RateLimitResponse) {}
     async fn on_complete(&self, _complete: &CompleteResponse) {}
 }
 
@@ -29,6 +30,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::Thinking(t) => handler.on_thinking(t).await,
         Response::Init(i) => handler.on_init(i).await,
         Response::Error(e) => handler.on_error(e).await,
+        Response::RateLimit(r) => handler.on_rate_limit(r).await,
         Response::Complete(c) => handler.on_complete(c).await,
     }
 }

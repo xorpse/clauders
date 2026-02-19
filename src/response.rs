@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::proto::Message;
+use crate::proto::RateLimitEvent;
 use crate::proto::content_block::{
     Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
     ToolUse as ProtoToolUse,
@@ -17,6 +18,7 @@ pub enum Response {
     Thinking(ThinkingResponse),
     Init(InitResponse),
     Error(ErrorResponse),
+    RateLimit(RateLimitResponse),
     Complete(CompleteResponse),
 }
 
@@ -143,6 +145,31 @@ impl ErrorResponse {
 }
 
 #[derive(Debug, Clone)]
+pub struct RateLimitResponse(pub(crate) RateLimitEvent);
+
+impl RateLimitResponse {
+    pub fn retry_after_ms(&self) -> Option<u64> {
+        self.0.retry_after_ms()
+    }
+
+    pub fn retry_after(&self) -> Option<std::time::Duration> {
+        self.0
+            .retry_after_ms()
+            .map(std::time::Duration::from_millis)
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        self.0.extra()
+    }
+}
+
+impl From<RateLimitEvent> for RateLimitResponse {
+    fn from(event: RateLimitEvent) -> Self {
+        Self(event)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct CompleteResponse(pub(crate) ResultMessage);
 
 impl CompleteResponse {
@@ -212,6 +239,10 @@ impl Response {
         matches!(self, Self::Error(_))
     }
 
+    pub fn is_rate_limit(&self) -> bool {
+        matches!(self, Self::RateLimit(_))
+    }
+
     pub fn is_complete(&self) -> bool {
         matches!(self, Self::Complete(_))
     }
@@ -254,6 +285,13 @@ impl Response {
     pub fn as_error(&self) -> Option<&ErrorResponse> {
         match self {
             Self::Error(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn as_rate_limit(&self) -> Option<&RateLimitResponse> {
+        match self {
+            Self::RateLimit(r) => Some(r),
             _ => None,
         }
     }
@@ -303,6 +341,13 @@ impl Response {
     pub fn into_error(self) -> Option<ErrorResponse> {
         match self {
             Self::Error(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn into_rate_limit(self) -> Option<RateLimitResponse> {
+        match self {
+            Self::RateLimit(r) => Some(r),
             _ => None,
         }
     }
@@ -418,6 +463,10 @@ impl Responses {
 
     pub fn errors(&self) -> impl Iterator<Item = &ErrorResponse> {
         self.0.iter().filter_map(|r| r.as_error())
+    }
+
+    pub fn rate_limits(&self) -> impl Iterator<Item = &RateLimitResponse> {
+        self.0.iter().filter_map(|r| r.as_rate_limit())
     }
 
     pub fn tool_use_by_name(&self, name: &str) -> Option<&ToolUseResponse> {

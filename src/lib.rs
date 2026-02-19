@@ -58,7 +58,7 @@ pub use permissions::{
 };
 pub use proto::message::{AssistantError, Usage};
 pub use response::{
-    CompleteResponse, ErrorResponse, InitResponse, Response, Responses, TextResponse,
-    ThinkingResponse, ToolResultResponse, ToolUseResponse,
+    CompleteResponse, ErrorResponse, InitResponse, RateLimitResponse, Response, Responses,
+    TextResponse, ThinkingResponse, ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};
