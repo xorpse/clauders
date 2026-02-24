@@ -3,7 +3,7 @@ use serde_json::Value;
 
 pub(crate) fn schema_for<T: JsonSchema>() -> Value {
     let root = schemars::schema_for!(T);
-    match serde_json::to_value(&root.schema) {
+    match serde_json::to_value(root) {
         Ok(v) => v,
         Err(e) => {
             tracing::warn!("failed to serialize schema: {}", e);
@@ -32,7 +32,7 @@ fn strip_schema_metadata(value: &mut Value) {
 
 pub(crate) fn schema_for_structured_output<T: JsonSchema>() -> Value {
     let root = schemars::schema_for!(T);
-    match serde_json::to_value(&root.schema) {
+    match serde_json::to_value(root) {
         Ok(mut v) => {
             strip_schema_metadata(&mut v);
             v
