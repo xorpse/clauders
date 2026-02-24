@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Rust bindings for Claude Code CLI"
 license = "MIT"
+documentation = "https://docs.rs/clauders"
 repository = "https://github.com/xorpse/clauders"
 keywords = ["claude", "ai", "anthropic", "cli"]
 
