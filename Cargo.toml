@@ -1,7 +1,7 @@
 [package]
 name = "clauders"
-authors = ["Sam L. Thomas <s@ghost.sh>"]
-version = "0.1.0"
+authors = ["Sam L. Thomas <s@ghost.sh>", "Francesco Evangelista <github@francescoevangelista.com>"]
+version = "0.1.1"
 edition = "2024"
 description = "Rust bindings for Claude Code CLI"
 license = "MIT"
