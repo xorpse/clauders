@@ -14,7 +14,7 @@ pub struct McpServer {
 
 impl McpServer {
     pub fn new(name: impl Into<String>, tools: Vec<Tool>) -> Self {
-        Self::with_version(name, "1.0.0", tools)
+        Self::with_version(name, env!("CARGO_PKG_VERSION"), tools)
     }
 
     pub fn with_version(

@@ -223,6 +223,52 @@ impl std::fmt::Display for AssistantError {
 pub enum SystemMessage {
     Init(InitMessage),
     Error(ErrorMessage),
+    HookStarted(HookLifecycleMessage),
+    HookResponse(HookLifecycleMessage),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookLifecycleMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hook_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hook_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hook_event: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stdout: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stderr: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exit_code: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    outcome: Option<String>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl HookLifecycleMessage {
+    pub fn hook_id(&self) -> Option<&str> {
+        self.hook_id.as_deref()
+    }
+
+    pub fn hook_name(&self) -> Option<&str> {
+        self.hook_name.as_deref()
+    }
+
+    pub fn hook_event(&self) -> Option<&str> {
+        self.hook_event.as_deref()
+    }
+
+    pub fn outcome(&self) -> Option<&str> {
+        self.outcome.as_deref()
+    }
+
+    pub fn exit_code(&self) -> Option<i32> {
+        self.exit_code
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
