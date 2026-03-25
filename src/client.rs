@@ -18,7 +18,7 @@ use crate::proto::control::{HookCallbackRequest, Request, ResponseEnvelope};
 use crate::proto::{
     ContentBlock, Incoming, Message, OutgoingUserMessage, RequestEnvelope, UserContent,
 };
-use crate::response::{Response, Responses};
+use crate::response::{RateLimitResponse, Response, Responses};
 use crate::transport::Transport;
 
 /// Tracks which hook type and index a callback ID maps to.
@@ -315,9 +315,19 @@ impl Client {
                             continue;
                         }
 
-                        if let Some(rate_limit) = incoming.as_rate_limit_event() {
-                            tracing::warn!(retry_after_ms = ?rate_limit.retry_after_ms(), "rate limit event");
-                            yield Ok(Response::RateLimit(rate_limit.clone().into()));
+                        if let Incoming::RateLimitEvent(event) = incoming {
+                            tracing::trace!(
+                                status = %event.status(),
+                                utilization = ?event.utilization(),
+                                resets_at = ?event.resets_at(),
+                                "rate limit event",
+                            );
+                            let response = RateLimitResponse::from(event);
+                            if let Some(delay) = response.backoff_delay() {
+                                tracing::warn!(delay_secs = delay.as_secs_f64(), "rate limited, backing off");
+                                tokio::time::sleep(delay).await;
+                            }
+                            yield Ok(Response::RateLimit(response));
                             continue;
                         }
 

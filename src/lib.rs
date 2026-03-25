@@ -56,6 +56,7 @@ pub use options::Options;
 pub use permissions::{
     Callback as PermissionCallback, Decision, PermissionContext, PermissionMode, PermissionRule,
 };
+pub use proto::incoming::RateLimitStatus;
 pub use proto::message::{AssistantError, Usage};
 pub use response::{
     CompleteResponse, ErrorResponse, HookLifecycleResponse, InitResponse, RateLimitResponse,
