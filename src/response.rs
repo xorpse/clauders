@@ -1,9 +1,8 @@
 use std::borrow::Cow;
+use std::time::Duration;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
-use crate::proto::Message;
-use crate::proto::RateLimitEvent;
 use crate::proto::content_block::{
     Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
     ToolUse as ProtoToolUse,
@@ -11,6 +10,7 @@ use crate::proto::content_block::{
 use crate::proto::message::{
     AssistantError, HookLifecycleMessage, InitMessage, ResultMessage, SystemMessage, Usage,
 };
+use crate::proto::{Message, RateLimitEvent};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -177,18 +177,41 @@ impl ErrorResponse {
 pub struct RateLimitResponse(pub(crate) RateLimitEvent);
 
 impl RateLimitResponse {
-    pub fn retry_after_ms(&self) -> Option<u64> {
-        self.0.retry_after_ms()
+    pub fn status(&self) -> &crate::proto::incoming::RateLimitStatus {
+        self.0.status()
     }
 
-    pub fn retry_after(&self) -> Option<std::time::Duration> {
-        self.0
-            .retry_after_ms()
-            .map(std::time::Duration::from_millis)
+    pub fn resets_at(&self) -> Option<f64> {
+        self.0.resets_at()
     }
 
-    pub fn extra(&self) -> &Map<String, Value> {
-        self.0.extra()
+    pub fn utilization(&self) -> Option<f64> {
+        self.0.utilization()
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        *self.status() == crate::proto::incoming::RateLimitStatus::Rejected
+    }
+
+    pub fn is_warning(&self) -> bool {
+        *self.status() == crate::proto::incoming::RateLimitStatus::AllowedWarning
+    }
+
+    pub fn backoff_delay(&self) -> Option<Duration> {
+        if !self.is_rejected() {
+            return None;
+        }
+
+        match self.resets_at() {
+            Some(resets_at) => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs_f64();
+                Some(Duration::from_secs_f64((resets_at - now).max(1.0)))
+            }
+            None => Some(Duration::from_secs(5)),
+        }
     }
 }
 

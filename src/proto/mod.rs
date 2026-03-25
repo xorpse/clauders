@@ -8,7 +8,9 @@ pub use control::{
     ErrorCode, ErrorDetail, ErrorResponse, PermissionMode, Request, RequestEnvelope, Response,
     ServerInfo, SuccessResponse,
 };
-pub use incoming::{ControlRequestEnvelope, ControlResponseEnvelope, Incoming, RateLimitEvent};
+pub use incoming::{
+    ControlRequestEnvelope, ControlResponseEnvelope, Incoming, RateLimitEvent, RateLimitStatus,
+};
 pub use message::{
     AssistantEnvelope, AssistantError, AssistantMessageInner, ErrorMessage, InitMessage, Message,
     OutgoingUserMessage, ResultMessage, SystemMessage, Usage, UserContent, UserEnvelope,

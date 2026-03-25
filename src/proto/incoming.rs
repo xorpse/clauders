@@ -143,65 +143,58 @@ impl ControlResponseEnvelope {
     }
 }
 
+/// The status of a rate limit check.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RateLimitStatus {
+    Allowed,
+    AllowedWarning,
+    Rejected,
+}
+
+impl std::fmt::Display for RateLimitStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Allowed => "allowed",
+            Self::AllowedWarning => "allowed_warning",
+            Self::Rejected => "rejected",
+        })
+    }
+}
+
+/// Rate limit info nested within the event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RateLimitInfo {
+    status: RateLimitStatus,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "resetsAt")]
+    resets_at: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    utilization: Option<f64>,
+}
+
 /// A rate limit event from the CLI.
-///
-/// Emitted when the API signals that rate limiting is in effect.
-/// ```json
-/// {
-///   "type": "rate_limit_event",
-///   "retry_after_ms": 5000,
-///   ...
-/// }
-/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitEvent {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    retry_after_ms: Option<u64>,
+    rate_limit_info: RateLimitInfo,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
 
 impl RateLimitEvent {
-    pub fn new() -> Self {
-        Self {
-            retry_after_ms: None,
-            extra: Map::new(),
-        }
+    pub fn status(&self) -> &RateLimitStatus {
+        &self.rate_limit_info.status
     }
 
-    // Getters
-    pub fn retry_after_ms(&self) -> Option<u64> {
-        self.retry_after_ms
+    pub fn resets_at(&self) -> Option<f64> {
+        self.rate_limit_info.resets_at
+    }
+
+    pub fn utilization(&self) -> Option<f64> {
+        self.rate_limit_info.utilization
     }
 
     pub fn extra(&self) -> &Map<String, Value> {
         &self.extra
-    }
-
-    // Setters
-    pub fn set_retry_after_ms(&mut self, retry_after_ms: Option<u64>) {
-        self.retry_after_ms = retry_after_ms;
-    }
-
-    pub fn set_extra(&mut self, extra: Map<String, Value>) {
-        self.extra = extra;
-    }
-
-    // Builders
-    pub fn with_retry_after_ms(mut self, ms: u64) -> Self {
-        self.set_retry_after_ms(Some(ms));
-        self
-    }
-
-    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
-        self.set_extra(extra);
-        self
-    }
-}
-
-impl Default for RateLimitEvent {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
