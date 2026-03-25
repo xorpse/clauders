@@ -8,7 +8,9 @@ use crate::proto::content_block::{
     Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
     ToolUse as ProtoToolUse,
 };
-use crate::proto::message::{AssistantError, InitMessage, ResultMessage, SystemMessage, Usage};
+use crate::proto::message::{
+    AssistantError, HookLifecycleMessage, InitMessage, ResultMessage, SystemMessage, Usage,
+};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -19,6 +21,8 @@ pub enum Response {
     Init(InitResponse),
     Error(ErrorResponse),
     RateLimit(RateLimitResponse),
+    HookStarted(HookLifecycleResponse),
+    HookResponse(HookLifecycleResponse),
     Complete(CompleteResponse),
 }
 
@@ -75,6 +79,31 @@ impl ThinkingResponse {
 
     pub fn signature(&self) -> &str {
         self.0.signature()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HookLifecycleResponse(pub(crate) HookLifecycleMessage);
+
+impl HookLifecycleResponse {
+    pub fn hook_id(&self) -> Option<&str> {
+        self.0.hook_id()
+    }
+
+    pub fn hook_name(&self) -> Option<&str> {
+        self.0.hook_name()
+    }
+
+    pub fn hook_event(&self) -> Option<&str> {
+        self.0.hook_event()
+    }
+
+    pub fn outcome(&self) -> Option<&str> {
+        self.0.outcome()
+    }
+
+    pub fn exit_code(&self) -> Option<i32> {
+        self.0.exit_code()
     }
 }
 
@@ -388,6 +417,12 @@ impl Response {
                 SystemMessage::Init(init) => vec![Self::Init(InitResponse(init.clone()))],
                 SystemMessage::Error(err) => {
                     vec![Self::Error(ErrorResponse::System(err.error().to_owned()))]
+                }
+                SystemMessage::HookStarted(msg) => {
+                    vec![Self::HookStarted(HookLifecycleResponse(msg.clone()))]
+                }
+                SystemMessage::HookResponse(msg) => {
+                    vec![Self::HookResponse(HookLifecycleResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],
