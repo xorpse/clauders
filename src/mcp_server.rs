@@ -173,7 +173,7 @@ impl McpServer {
             "initialize" => self.handle_initialize(&id),
             "tools/list" => self.handle_tools_list(&id),
             "tools/call" => self.handle_tools_call(&id, &params).await,
-            "notifications/initialized" => json!({"jsonrpc": "2.0", "result": {}}),
+            method if method.starts_with("notifications/") => Value::Null,
             _ => Self::jsonrpc_error(&id, -32601, &format!("method '{}' not found", method)),
         }
     }

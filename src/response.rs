@@ -433,6 +433,10 @@ impl Response {
                         crate::proto::ContentBlock::Thinking(t) => {
                             Self::Thinking(ThinkingResponse(t.clone()))
                         }
+                        crate::proto::ContentBlock::Image(_)
+                        | crate::proto::ContentBlock::Document(_) => {
+                            Self::Text(TextResponse(ProtoText::new("[media]")))
+                        }
                     })
                     .collect()
             }
