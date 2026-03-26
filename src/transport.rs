@@ -5,6 +5,7 @@ use std::process::Stdio;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
+use uuid::Uuid;
 
 use crate::agent::Agent;
 use crate::error::Error;
@@ -45,6 +46,11 @@ pub struct TransportOptions {
     env: Vec<(String, String)>,
     json_schema: Option<String>,
     mcp_server_names: Vec<String>,
+    max_turns: Option<u32>,
+    resume: Option<String>,
+    fork_session: bool,
+    #[builder(default)]
+    resume_session_at: Option<Uuid>,
     agents: HashMap<String, Agent>,
     strict_mcp_config: bool,
     disable_slash_commands: bool,
@@ -277,6 +283,22 @@ impl Transport {
 
         if options.disable_slash_commands {
             cmd.push("--disable-slash-commands".to_owned());
+        }
+
+        if let Some(turns) = options.max_turns {
+            cmd.extend(["--max-turns".to_owned(), turns.to_string()]);
+        }
+
+        if let Some(ref session_id) = options.resume {
+            cmd.extend(["--resume".to_owned(), session_id.clone()]);
+        }
+
+        if options.fork_session {
+            cmd.push("--fork-session".to_owned());
+        }
+
+        if let Some(uuid) = options.resume_session_at {
+            cmd.extend(["--resume-session-at".to_owned(), uuid.to_string()]);
         }
 
         if !options.agents.is_empty() {

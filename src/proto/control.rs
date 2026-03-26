@@ -178,6 +178,8 @@ impl PermissionUpdate {
 pub struct InitializeRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     hooks: Option<HashMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sdkMcpServers")]
+    sdk_mcp_servers: Option<Vec<String>>,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
@@ -186,31 +188,42 @@ impl InitializeRequest {
     pub fn new() -> Self {
         Self {
             hooks: None,
+            sdk_mcp_servers: None,
             extra: Map::new(),
         }
     }
 
-    // Getters
     pub fn hooks(&self) -> Option<&HashMap<String, Value>> {
         self.hooks.as_ref()
+    }
+
+    pub fn sdk_mcp_servers(&self) -> Option<&[String]> {
+        self.sdk_mcp_servers.as_deref()
     }
 
     pub fn extra(&self) -> &Map<String, Value> {
         &self.extra
     }
 
-    // Setters
     pub fn set_hooks(&mut self, hooks: Option<HashMap<String, Value>>) {
         self.hooks = hooks;
+    }
+
+    pub fn set_sdk_mcp_servers(&mut self, servers: Option<Vec<String>>) {
+        self.sdk_mcp_servers = servers;
     }
 
     pub fn set_extra(&mut self, extra: Map<String, Value>) {
         self.extra = extra;
     }
 
-    // Builders
     pub fn with_hooks(mut self, hooks: HashMap<String, Value>) -> Self {
         self.set_hooks(Some(hooks));
+        self
+    }
+
+    pub fn with_sdk_mcp_servers(mut self, servers: Vec<String>) -> Self {
+        self.set_sdk_mcp_servers(Some(servers));
         self
     }
 

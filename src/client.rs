@@ -122,53 +122,95 @@ impl Client {
         callbacks
     }
 
-    /// Sends the initialize control request to enable SDK features.
     async fn initialize(&self) -> Result<(), Error> {
-        let hook_callback_ids = self.build_hook_callback_ids();
+        let mut init_request = crate::proto::control::InitializeRequest::new();
 
-        let init_request = if hook_callback_ids.is_null() {
-            crate::proto::control::InitializeRequest::new()
-        } else {
-            crate::proto::control::InitializeRequest::new().with_hooks(
-                std::iter::once(("hookCallbackIds".to_owned(), hook_callback_ids)).collect(),
-            )
-        };
+        if let Some(hooks) = self.build_hooks_config() {
+            init_request = init_request.with_hooks(hooks);
+        }
+
+        let mcp_names = self.mcp_servers.keys().cloned().collect::<Vec<_>>();
+        if !mcp_names.is_empty() {
+            init_request = init_request.with_sdk_mcp_servers(mcp_names);
+        }
 
         let request = crate::proto::Request::Initialize(init_request);
         let envelope = RequestEnvelope::new(request);
         self.transport.lock().await.send_request(&envelope).await?;
-        tracing::debug!("sent initialize control request");
-        Ok(())
+        tracing::debug!("sent initialize control request, waiting for response");
+
+        loop {
+            let incoming = {
+                let mut transport = self.transport.lock().await;
+                transport.receive().await
+            };
+
+            match incoming {
+                Ok(Some(incoming)) => {
+                    if let Some(ctrl) = incoming.as_control_request() {
+                        let response = match ctrl.request() {
+                            Request::McpMessage(mcp_req) => {
+                                self.handle_mcp_message(
+                                    ctrl.request_id(),
+                                    mcp_req.server_name(),
+                                    mcp_req.message(),
+                                )
+                                .await
+                            }
+                            Request::HookCallback(hook_req) => {
+                                self.handle_hook_callback(ctrl.request_id(), hook_req).await
+                            }
+                            _ => continue,
+                        };
+                        let mut transport = self.transport.lock().await;
+                        if let Err(e) = transport.send_response(&response).await {
+                            tracing::warn!(error = %e, "failed to send control response during initialization");
+                        }
+                        continue;
+                    }
+
+                    if incoming.as_control_response().is_some() {
+                        tracing::debug!("received initialize response");
+                        return Ok(());
+                    }
+
+                    tracing::debug!("init loop: skipping non-control message");
+                }
+                Ok(None) => {
+                    return Err(Error::ProtocolError(
+                        "stream ended during initialization".to_owned(),
+                    ));
+                }
+                Err(e) => return Err(e),
+            }
+        }
     }
 
-    fn build_hook_callback_ids(&self) -> Value {
-        let Some(hooks) = &self.hooks else {
-            return Value::Null;
-        };
-
-        let mut result = json!({});
+    fn build_hooks_config(&self) -> Option<HashMap<String, Value>> {
+        let hooks = self.hooks.as_ref()?;
+        let mut result = HashMap::new();
 
         if hooks.has_pre_tool_use_hooks() {
-            let mut pre_tool_use = Vec::new();
-            for (id, (pattern, _)) in hooks.pre_tool_use_hooks().enumerate() {
-                pre_tool_use.push(json!({
-                    "matcher": pattern,
-                    "callbackIds": [format!("hook_{id}")]
-                }));
-            }
-            result["PreToolUse"] = json!(pre_tool_use);
+            let entries = hooks
+                .pre_tool_use_hooks()
+                .enumerate()
+                .map(|(id, (pattern, _))| {
+                    json!({"matcher": pattern, "hookCallbackIds": [format!("hook_{id}")]})
+                })
+                .collect::<Vec<_>>();
+            result.insert("PreToolUse".to_owned(), json!(entries));
         }
 
         if hooks.has_post_tool_use_hooks() {
-            let mut post_tool_use = Vec::new();
             let base_id = hooks.pre_tool_use_hooks().len();
-            for (idx, (pattern, _)) in hooks.post_tool_use_hooks().enumerate() {
-                post_tool_use.push(json!({
-                    "matcher": pattern,
-                    "callbackIds": [format!("hook_{}", base_id + idx)]
-                }));
-            }
-            result["PostToolUse"] = json!(post_tool_use);
+            let entries = hooks
+                .post_tool_use_hooks()
+                .enumerate()
+                .map(|(idx, (pattern, _))| {
+                    json!({"matcher": pattern, "hookCallbackIds": [format!("hook_{}", base_id + idx)]})
+                })
+                .collect::<Vec<_>>();
+            result.insert("PostToolUse".to_owned(), json!(entries));
         }
 
         if hooks.has_user_prompt_submit_hooks() {
@@ -176,7 +218,7 @@ impl Client {
             let ids = (0..hooks.user_prompt_submit_hooks().len())
                 .map(|i| format!("hook_{}", base_id + i))
                 .collect::<Vec<_>>();
-            result["UserPromptSubmit"] = json!(ids);
+            result.insert("UserPromptSubmit".to_owned(), json!(ids));
         }
 
         if hooks.has_stop_hooks() {
@@ -186,10 +228,10 @@ impl Client {
             let ids = (0..hooks.stop_hooks().len())
                 .map(|i| format!("hook_{}", base_id + i))
                 .collect::<Vec<_>>();
-            result["Stop"] = json!(ids);
+            result.insert("Stop".to_owned(), json!(ids));
         }
 
-        result
+        Some(result)
     }
 
     /// Returns the current session ID, if one has been established.
@@ -372,8 +414,7 @@ impl Client {
         match self.mcp_servers.get(server_name) {
             Some(server) => {
                 let mcp_response = server.handle_json_message(message).await;
-                // Wrap in mcp_response field as expected by Claude CLI
-                let response_data = serde_json::json!({ "mcp_response": mcp_response });
+                let response_data = json!({ "mcp_response": mcp_response });
                 ResponseEnvelope::success(request_id, Some(response_data))
             }
             None => {

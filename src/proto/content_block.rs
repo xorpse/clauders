@@ -8,6 +8,8 @@ pub enum ContentBlock {
     ToolUse(ToolUse),
     ToolResult(ToolResult),
     Thinking(Thinking),
+    Image(Image),
+    Document(Document),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +43,30 @@ pub struct ToolResult {
 pub struct Thinking {
     thinking: String,
     signature: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Image {
+    source: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cache_control: Option<Value>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Document {
+    source: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    context: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    citations: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cache_control: Option<Value>,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
@@ -267,6 +293,152 @@ impl Thinking {
     }
 }
 
+impl Image {
+    pub fn new(source: Value) -> Self {
+        Self {
+            source,
+            cache_control: None,
+            extra: Map::new(),
+        }
+    }
+
+    // Getters
+    pub fn source(&self) -> &Value {
+        &self.source
+    }
+
+    pub fn cache_control(&self) -> Option<&Value> {
+        self.cache_control.as_ref()
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
+    // Setters
+    pub fn set_source(&mut self, source: Value) {
+        self.source = source;
+    }
+
+    pub fn set_cache_control(&mut self, cache_control: Option<Value>) {
+        self.cache_control = cache_control;
+    }
+
+    pub fn set_extra(&mut self, extra: Map<String, Value>) {
+        self.extra = extra;
+    }
+
+    // Builders
+    pub fn with_source(mut self, source: Value) -> Self {
+        self.set_source(source);
+        self
+    }
+
+    pub fn with_cache_control(mut self, cache_control: Value) -> Self {
+        self.set_cache_control(Some(cache_control));
+        self
+    }
+
+    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
+        self.set_extra(extra);
+        self
+    }
+}
+
+impl Document {
+    pub fn new(source: Value) -> Self {
+        Self {
+            source,
+            title: None,
+            context: None,
+            citations: None,
+            cache_control: None,
+            extra: Map::new(),
+        }
+    }
+
+    // Getters
+    pub fn source(&self) -> &Value {
+        &self.source
+    }
+
+    pub fn title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+
+    pub fn context(&self) -> Option<&str> {
+        self.context.as_deref()
+    }
+
+    pub fn citations(&self) -> Option<&Value> {
+        self.citations.as_ref()
+    }
+
+    pub fn cache_control(&self) -> Option<&Value> {
+        self.cache_control.as_ref()
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
+    // Setters
+    pub fn set_source(&mut self, source: Value) {
+        self.source = source;
+    }
+
+    pub fn set_title(&mut self, title: Option<String>) {
+        self.title = title;
+    }
+
+    pub fn set_context(&mut self, context: Option<String>) {
+        self.context = context;
+    }
+
+    pub fn set_citations(&mut self, citations: Option<Value>) {
+        self.citations = citations;
+    }
+
+    pub fn set_cache_control(&mut self, cache_control: Option<Value>) {
+        self.cache_control = cache_control;
+    }
+
+    pub fn set_extra(&mut self, extra: Map<String, Value>) {
+        self.extra = extra;
+    }
+
+    // Builders
+    pub fn with_source(mut self, source: Value) -> Self {
+        self.set_source(source);
+        self
+    }
+
+    pub fn with_title(mut self, title: impl Into<String>) -> Self {
+        self.set_title(Some(title.into()));
+        self
+    }
+
+    pub fn with_context(mut self, context: impl Into<String>) -> Self {
+        self.set_context(Some(context.into()));
+        self
+    }
+
+    pub fn with_citations(mut self, citations: Value) -> Self {
+        self.set_citations(Some(citations));
+        self
+    }
+
+    pub fn with_cache_control(mut self, cache_control: Value) -> Self {
+        self.set_cache_control(Some(cache_control));
+        self
+    }
+
+    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
+        self.set_extra(extra);
+        self
+    }
+}
+
 impl ContentBlock {
     pub fn text(text: impl Into<String>) -> Self {
         Self::Text(Text::new(text))
@@ -282,5 +454,13 @@ impl ContentBlock {
 
     pub fn thinking(thinking: impl Into<String>, signature: impl Into<String>) -> Self {
         Self::Thinking(Thinking::new(thinking, signature))
+    }
+
+    pub fn image(source: Value) -> Self {
+        Self::Image(Image::new(source))
+    }
+
+    pub fn document(source: Value) -> Self {
+        Self::Document(Document::new(source))
     }
 }
