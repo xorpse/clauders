@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+
 use crate::proto::content_block::{
     Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
     ToolUse as ProtoToolUse,
@@ -27,28 +28,42 @@ pub enum Response {
 }
 
 #[derive(Debug, Clone)]
-pub struct TextResponse(pub(crate) ProtoText);
+pub struct TextResponse {
+    inner: ProtoText,
+    message_id: Option<String>,
+}
 
 impl TextResponse {
     pub fn content(&self) -> &str {
-        self.0.text()
+        self.inner.text()
+    }
+
+    pub fn message_id(&self) -> Option<&str> {
+        self.message_id.as_deref()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ToolUseResponse(pub(crate) ProtoToolUse);
+pub struct ToolUseResponse {
+    inner: ProtoToolUse,
+    message_id: Option<String>,
+}
 
 impl ToolUseResponse {
     pub fn id(&self) -> &str {
-        self.0.id()
+        self.inner.id()
     }
 
     pub fn name(&self) -> &str {
-        self.0.name()
+        self.inner.name()
     }
 
     pub fn input(&self) -> &Value {
-        self.0.input()
+        self.inner.input()
+    }
+
+    pub fn message_id(&self) -> Option<&str> {
+        self.message_id.as_deref()
     }
 }
 
@@ -418,14 +433,21 @@ impl Response {
                 if let Some(err) = envelope.message().error() {
                     return vec![Self::Error(ErrorResponse::Assistant(err.clone()))];
                 }
+                let message_id = envelope.uuid().map(String::from);
                 envelope
                     .message()
                     .content()
                     .iter()
                     .map(|block| match block {
-                        crate::proto::ContentBlock::Text(t) => Self::Text(TextResponse(t.clone())),
+                        crate::proto::ContentBlock::Text(t) => Self::Text(TextResponse {
+                            inner: t.clone(),
+                            message_id: message_id.clone(),
+                        }),
                         crate::proto::ContentBlock::ToolUse(t) => {
-                            Self::ToolUse(ToolUseResponse(t.clone()))
+                            Self::ToolUse(ToolUseResponse {
+                                inner: t.clone(),
+                                message_id: message_id.clone(),
+                            })
                         }
                         crate::proto::ContentBlock::ToolResult(t) => {
                             Self::ToolResult(ToolResultResponse(t.clone()))
@@ -435,7 +457,10 @@ impl Response {
                         }
                         crate::proto::ContentBlock::Image(_)
                         | crate::proto::ContentBlock::Document(_) => {
-                            Self::Text(TextResponse(ProtoText::new("[media]")))
+                            Self::Text(TextResponse {
+                                inner: ProtoText::new("[media]"),
+                                message_id: message_id.clone(),
+                            })
                         }
                     })
                     .collect()

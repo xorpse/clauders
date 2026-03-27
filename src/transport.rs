@@ -5,7 +5,6 @@ use std::process::Stdio;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
-use uuid::Uuid;
 
 use crate::agent::Agent;
 use crate::error::Error;
@@ -50,7 +49,7 @@ pub struct TransportOptions {
     resume: Option<String>,
     fork_session: bool,
     #[builder(default)]
-    resume_session_at: Option<Uuid>,
+    resume_session_at: Option<String>,
     agents: HashMap<String, Agent>,
     strict_mcp_config: bool,
     disable_slash_commands: bool,
@@ -297,8 +296,8 @@ impl Transport {
             cmd.push("--fork-session".to_owned());
         }
 
-        if let Some(uuid) = options.resume_session_at {
-            cmd.extend(["--resume-session-at".to_owned(), uuid.to_string()]);
+        if let Some(ref id) = options.resume_session_at {
+            cmd.extend(["--resume-session-at".to_owned(), id.clone()]);
         }
 
         if !options.agents.is_empty() {

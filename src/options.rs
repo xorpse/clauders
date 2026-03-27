@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use schemars::JsonSchema;
-use uuid::Uuid;
 
 use crate::agent::Agent;
 use crate::hooks::Hooks;
@@ -41,7 +40,7 @@ pub struct Options {
     max_turns: Option<u32>,
     resume: Option<String>,
     fork_session: bool,
-    resume_session_at: Option<uuid::Uuid>,
+    resume_session_at: Option<String>,
     strict_mcp_config: bool,
     disable_slash_commands: bool,
 }
@@ -70,8 +69,8 @@ impl Options {
     }
 
     #[must_use]
-    pub fn resume_session_at(mut self, uuid: Uuid) -> Self {
-        self.resume_session_at = Some(uuid);
+    pub fn resume_session_at(mut self, id: impl Into<String>) -> Self {
+        self.resume_session_at = Some(id.into());
         self
     }
 
@@ -265,7 +264,10 @@ impl Options {
         let mut allowed = self.allowed_tools.clone();
         for (server_name, server) in &self.mcp_servers {
             for tool in server.tools() {
-                allowed.push(format!("mcp__{}__{}", server_name, tool.name()));
+                let name = format!("mcp__{server_name}__{}", tool.name());
+                if !allowed.contains(&name) {
+                    allowed.push(name);
+                }
             }
         }
 
@@ -311,8 +313,8 @@ impl Options {
             builder.resume(session_id.clone());
         }
         builder.fork_session(self.fork_session);
-        if let Some(uuid) = self.resume_session_at {
-            builder.resume_session_at(uuid);
+        if let Some(ref id) = self.resume_session_at {
+            builder.resume_session_at(id.clone());
         }
         builder.agents(self.agents.clone());
         builder.strict_mcp_config(self.strict_mcp_config);

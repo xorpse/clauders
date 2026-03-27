@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+
 use super::content_block::ContentBlock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,24 +95,37 @@ pub enum UserContent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssistantEnvelope {
     message: AssistantMessageInner,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uuid: Option<String>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
 }
 
 impl AssistantEnvelope {
     pub fn new(message: AssistantMessageInner) -> Self {
-        Self { message }
+        Self {
+            message,
+            uuid: None,
+            extra: Map::new(),
+        }
     }
 
-    // Getters
     pub fn message(&self) -> &AssistantMessageInner {
         &self.message
     }
 
-    // Setters
+    pub fn uuid(&self) -> Option<&str> {
+        self.uuid.as_deref()
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
     pub fn set_message(&mut self, message: AssistantMessageInner) {
         self.message = message;
     }
 
-    // Builders
     pub fn with_message(mut self, message: AssistantMessageInner) -> Self {
         self.set_message(message);
         self
