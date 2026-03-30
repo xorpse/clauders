@@ -71,7 +71,7 @@ impl McpServer {
         Self::jsonrpc_success(
             id,
             json!({
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": "2025-11-25",
                 "capabilities": { "tools": {} },
                 "serverInfo": {
                     "name": self.name,
@@ -174,7 +174,7 @@ impl McpServer {
             "tools/list" => self.handle_tools_list(&id),
             "tools/call" => self.handle_tools_call(&id, &params).await,
             method if method.starts_with("notifications/") => Value::Null,
-            _ => Self::jsonrpc_error(&id, -32601, &format!("method '{}' not found", method)),
+            _ => Self::jsonrpc_error(&id, -32601, &format!("method '{method}' not found")),
         }
     }
 }

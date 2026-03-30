@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::new(
         Options::new()
-            .model(Model::Sonnet)
+            .model(Model::Haiku)
             .disable_tools()
             .disable_slash_commands(true)
             .strict_mcp_config(true)

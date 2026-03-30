@@ -147,6 +147,26 @@ impl Client {
 
             match incoming {
                 Ok(Some(incoming)) => {
+                    match &incoming {
+                        Incoming::System(crate::proto::SystemMessage::HookResponse(hook))
+                            if hook.outcome() == Some("error") =>
+                        {
+                            return Err(Error::ProtocolError(format!(
+                                "hook failed during initialization: hook={} event={} exit_code={:?}",
+                                hook.hook_name().unwrap_or("unknown"),
+                                hook.hook_event().unwrap_or("unknown"),
+                                hook.exit_code()
+                            )));
+                        }
+                        Incoming::System(crate::proto::SystemMessage::Error(err)) => {
+                            return Err(Error::ProtocolError(format!(
+                                "system error during initialization: {}",
+                                err.error()
+                            )));
+                        }
+                        _ => {}
+                    }
+
                     if let Some(ctrl) = incoming.as_control_request() {
                         let response = match ctrl.request() {
                             Request::McpMessage(mcp_req) => {
@@ -169,12 +189,25 @@ impl Client {
                         continue;
                     }
 
-                    if incoming.as_control_response().is_some() {
-                        tracing::debug!("received initialize response");
-                        return Ok(());
+                    if let Some(response) = incoming.as_control_response() {
+                        match response.response() {
+                            crate::proto::Response::Success(success) => {
+                                tracing::debug!(
+                                    request_id = %success.request_id(),
+                                    "received initialize response"
+                                );
+                                return Ok(());
+                            }
+                            crate::proto::Response::Error(err) => {
+                                return Err(Error::ControlError {
+                                    request_id: err.request_id().to_owned(),
+                                    message: err.error().message().to_owned(),
+                                });
+                            }
+                        }
                     }
 
-                    tracing::debug!("init loop: skipping non-control message");
+                    tracing::debug!("initialization loop: skipping non-control message");
                 }
                 Ok(None) => {
                     return Err(Error::ProtocolError(
@@ -218,7 +251,10 @@ impl Client {
             let ids = (0..hooks.user_prompt_submit_hooks().len())
                 .map(|i| format!("hook_{}", base_id + i))
                 .collect::<Vec<_>>();
-            result.insert("UserPromptSubmit".to_owned(), json!(ids));
+            result.insert(
+                "UserPromptSubmit".to_owned(),
+                json!([{ "hookCallbackIds": ids }]),
+            );
         }
 
         if hooks.has_stop_hooks() {
@@ -228,7 +264,7 @@ impl Client {
             let ids = (0..hooks.stop_hooks().len())
                 .map(|i| format!("hook_{}", base_id + i))
                 .collect::<Vec<_>>();
-            result.insert("Stop".to_owned(), json!(ids));
+            result.insert("Stop".to_owned(), json!([{ "hookCallbackIds": ids }]));
         }
 
         Some(result)
