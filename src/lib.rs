@@ -59,7 +59,9 @@ pub use permissions::{
 pub use proto::incoming::RateLimitStatus;
 pub use proto::message::{AssistantError, Usage};
 pub use response::{
-    CompleteResponse, ErrorResponse, HookLifecycleResponse, InitResponse, RateLimitResponse,
-    Response, Responses, TextResponse, ThinkingResponse, ToolResultResponse, ToolUseResponse,
+    ApiRetryResponse, CompleteResponse, ErrorResponse, HookLifecycleResponse, InitResponse,
+    NotificationResponse, RateLimitResponse, Response, Responses, TaskNotificationResponse,
+    TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
+    ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};

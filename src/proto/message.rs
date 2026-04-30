@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-
 use super::content_block::ContentBlock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -238,7 +237,408 @@ pub enum SystemMessage {
     Init(InitMessage),
     Error(ErrorMessage),
     HookStarted(HookLifecycleMessage),
+    HookProgress(HookLifecycleMessage),
     HookResponse(HookLifecycleMessage),
+    ApiRetry(ApiRetryMessage),
+    TaskStarted(TaskStartedMessage),
+    TaskProgress(TaskProgressMessage),
+    TaskUpdated(TaskUpdatedMessage),
+    TaskNotification(TaskNotificationMessage),
+    Notification(NotificationMessage),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiRetryMessage {
+    attempt: i32,
+    max_retries: i32,
+    retry_delay_ms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_status: Option<i32>,
+    error: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uuid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_id: Option<String>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl ApiRetryMessage {
+    pub fn new(
+        attempt: i32,
+        max_retries: i32,
+        retry_delay_ms: i64,
+        error: impl Into<String>,
+    ) -> Self {
+        Self {
+            attempt,
+            max_retries,
+            retry_delay_ms,
+            error_status: None,
+            error: error.into(),
+            uuid: None,
+            session_id: None,
+            extra: Map::new(),
+        }
+    }
+
+    pub fn attempt(&self) -> i32 {
+        self.attempt
+    }
+
+    pub fn max_retries(&self) -> i32 {
+        self.max_retries
+    }
+
+    pub fn retry_delay_ms(&self) -> i64 {
+        self.retry_delay_ms
+    }
+
+    pub fn error_status(&self) -> Option<i32> {
+        self.error_status
+    }
+
+    pub fn error(&self) -> &str {
+        &self.error
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationMessage {
+    key: String,
+    text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uuid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_id: Option<String>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl NotificationMessage {
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn priority(&self) -> Option<&str> {
+        self.priority.as_deref()
+    }
+
+    pub fn uuid(&self) -> Option<&str> {
+        self.uuid.as_deref()
+    }
+
+    pub fn session_id(&self) -> Option<&str> {
+        self.session_id.as_deref()
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskStartedMessage {
+    task_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_use_id: Option<String>,
+    description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    task_type: Option<String>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskStartedMessage {
+    pub fn task_id(&self) -> &str {
+        &self.task_id
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.tool_use_id.as_deref()
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn task_type(&self) -> Option<&str> {
+        self.task_type.as_deref()
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskProgressMessage {
+    task_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_use_id: Option<String>,
+    description: String,
+    usage: TaskUsage,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last_tool_name: Option<String>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskProgressMessage {
+    pub fn task_id(&self) -> &str {
+        &self.task_id
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.tool_use_id.as_deref()
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn usage(&self) -> &TaskUsage {
+        &self.usage
+    }
+
+    pub fn last_tool_name(&self) -> Option<&str> {
+        self.last_tool_name.as_deref()
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskUsage {
+    total_tokens: i64,
+    tool_uses: i64,
+    duration_ms: i64,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskUsage {
+    pub fn total_tokens(&self) -> i64 {
+        self.total_tokens
+    }
+
+    pub fn tool_uses(&self) -> i64 {
+        self.tool_uses
+    }
+
+    pub fn duration_ms(&self) -> i64 {
+        self.duration_ms
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskUpdatedMessage {
+    task_id: String,
+    patch: TaskPatch,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskUpdatedMessage {
+    pub fn task_id(&self) -> &str {
+        &self.task_id
+    }
+
+    pub fn patch(&self) -> &TaskPatch {
+        &self.patch
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskPatch {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<TaskStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    end_time: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_paused_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    is_backgrounded: Option<bool>,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskPatch {
+    pub fn status(&self) -> Option<TaskStatus> {
+        self.status
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    pub fn end_time(&self) -> Option<i64> {
+        self.end_time
+    }
+
+    pub fn total_paused_ms(&self) -> Option<i64> {
+        self.total_paused_ms
+    }
+
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+
+    pub fn is_backgrounded(&self) -> Option<bool> {
+        self.is_backgrounded
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+    Killed,
+}
+
+impl std::fmt::Display for TaskStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Pending => "pending",
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Killed => "killed",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskNotificationMessage {
+    task_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_use_id: Option<String>,
+    status: TaskNotificationStatus,
+    output_file: String,
+    summary: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    usage: Option<TaskUsage>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl TaskNotificationMessage {
+    pub fn task_id(&self) -> &str {
+        &self.task_id
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.tool_use_id.as_deref()
+    }
+
+    pub fn status(&self) -> TaskNotificationStatus {
+        self.status
+    }
+
+    pub fn output_file(&self) -> &str {
+        &self.output_file
+    }
+
+    pub fn summary(&self) -> &str {
+        &self.summary
+    }
+
+    pub fn usage(&self) -> Option<&TaskUsage> {
+        self.usage.as_ref()
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskNotificationStatus {
+    Completed,
+    Failed,
+    Stopped,
+}
+
+impl std::fmt::Display for TaskNotificationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Stopped => "stopped",
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

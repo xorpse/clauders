@@ -3,13 +3,14 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-
 use crate::proto::content_block::{
     Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
     ToolUse as ProtoToolUse,
 };
 use crate::proto::message::{
-    AssistantError, HookLifecycleMessage, InitMessage, ResultMessage, SystemMessage, Usage,
+    ApiRetryMessage, AssistantError, HookLifecycleMessage, InitMessage, NotificationMessage,
+    ResultMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
+    TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
 };
 use crate::proto::{Message, RateLimitEvent};
 
@@ -23,8 +24,185 @@ pub enum Response {
     Error(ErrorResponse),
     RateLimit(RateLimitResponse),
     HookStarted(HookLifecycleResponse),
+    HookProgress(HookLifecycleResponse),
     HookResponse(HookLifecycleResponse),
+    TaskStarted(TaskStartedResponse),
+    TaskProgress(TaskProgressResponse),
+    TaskUpdated(TaskUpdatedResponse),
+    TaskNotification(TaskNotificationResponse),
+    Notification(NotificationResponse),
+    ApiRetry(ApiRetryResponse),
     Complete(CompleteResponse),
+}
+
+#[derive(Debug, Clone)]
+pub struct NotificationResponse(pub(crate) NotificationMessage);
+
+impl NotificationResponse {
+    pub fn key(&self) -> &str {
+        self.0.key()
+    }
+
+    pub fn text(&self) -> &str {
+        self.0.text()
+    }
+
+    pub fn priority(&self) -> Option<&str> {
+        self.0.priority()
+    }
+
+    pub fn uuid(&self) -> Option<&str> {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> Option<&str> {
+        self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiRetryResponse(pub(crate) ApiRetryMessage);
+
+impl ApiRetryResponse {
+    pub fn attempt(&self) -> i32 {
+        self.0.attempt()
+    }
+
+    pub fn max_retries(&self) -> i32 {
+        self.0.max_retries()
+    }
+
+    pub fn retry_delay_ms(&self) -> i64 {
+        self.0.retry_delay_ms()
+    }
+
+    pub fn error_status(&self) -> Option<i32> {
+        self.0.error_status()
+    }
+
+    pub fn error(&self) -> &str {
+        self.0.error()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskStartedResponse(pub(crate) TaskStartedMessage);
+
+impl TaskStartedResponse {
+    pub fn task_id(&self) -> &str {
+        self.0.task_id()
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.0.tool_use_id()
+    }
+
+    pub fn description(&self) -> &str {
+        self.0.description()
+    }
+
+    pub fn task_type(&self) -> Option<&str> {
+        self.0.task_type()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskProgressResponse(pub(crate) TaskProgressMessage);
+
+impl TaskProgressResponse {
+    pub fn task_id(&self) -> &str {
+        self.0.task_id()
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.0.tool_use_id()
+    }
+
+    pub fn description(&self) -> &str {
+        self.0.description()
+    }
+
+    pub fn usage(&self) -> &TaskUsage {
+        self.0.usage()
+    }
+
+    pub fn last_tool_name(&self) -> Option<&str> {
+        self.0.last_tool_name()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskUpdatedResponse(pub(crate) TaskUpdatedMessage);
+
+impl TaskUpdatedResponse {
+    pub fn task_id(&self) -> &str {
+        self.0.task_id()
+    }
+
+    pub fn patch(&self) -> &TaskPatch {
+        self.0.patch()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TaskNotificationResponse(pub(crate) TaskNotificationMessage);
+
+impl TaskNotificationResponse {
+    pub fn task_id(&self) -> &str {
+        self.0.task_id()
+    }
+
+    pub fn tool_use_id(&self) -> Option<&str> {
+        self.0.tool_use_id()
+    }
+
+    pub fn status(&self) -> TaskNotificationStatus {
+        self.0.status()
+    }
+
+    pub fn output_file(&self) -> &str {
+        self.0.output_file()
+    }
+
+    pub fn summary(&self) -> &str {
+        self.0.summary()
+    }
+
+    pub fn usage(&self) -> Option<&TaskUsage> {
+        self.0.usage()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -314,6 +492,30 @@ impl Response {
         matches!(self, Self::Complete(_))
     }
 
+    pub fn is_task_started(&self) -> bool {
+        matches!(self, Self::TaskStarted(_))
+    }
+
+    pub fn is_task_progress(&self) -> bool {
+        matches!(self, Self::TaskProgress(_))
+    }
+
+    pub fn is_task_updated(&self) -> bool {
+        matches!(self, Self::TaskUpdated(_))
+    }
+
+    pub fn is_task_notification(&self) -> bool {
+        matches!(self, Self::TaskNotification(_))
+    }
+
+    pub fn is_notification(&self) -> bool {
+        matches!(self, Self::Notification(_))
+    }
+
+    pub fn is_api_retry(&self) -> bool {
+        matches!(self, Self::ApiRetry(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -366,6 +568,48 @@ impl Response {
     pub fn as_complete(&self) -> Option<&CompleteResponse> {
         match self {
             Self::Complete(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    pub fn as_task_started(&self) -> Option<&TaskStartedResponse> {
+        match self {
+            Self::TaskStarted(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_task_progress(&self) -> Option<&TaskProgressResponse> {
+        match self {
+            Self::TaskProgress(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_task_updated(&self) -> Option<&TaskUpdatedResponse> {
+        match self {
+            Self::TaskUpdated(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_task_notification(&self) -> Option<&TaskNotificationResponse> {
+        match self {
+            Self::TaskNotification(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_notification(&self) -> Option<&NotificationResponse> {
+        match self {
+            Self::Notification(n) => Some(n),
+            _ => None,
+        }
+    }
+
+    pub fn as_api_retry(&self) -> Option<&ApiRetryResponse> {
+        match self {
+            Self::ApiRetry(r) => Some(r),
             _ => None,
         }
     }
@@ -426,6 +670,48 @@ impl Response {
         }
     }
 
+    pub fn into_task_started(self) -> Option<TaskStartedResponse> {
+        match self {
+            Self::TaskStarted(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn into_task_progress(self) -> Option<TaskProgressResponse> {
+        match self {
+            Self::TaskProgress(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn into_task_updated(self) -> Option<TaskUpdatedResponse> {
+        match self {
+            Self::TaskUpdated(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn into_task_notification(self) -> Option<TaskNotificationResponse> {
+        match self {
+            Self::TaskNotification(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn into_notification(self) -> Option<NotificationResponse> {
+        match self {
+            Self::Notification(n) => Some(n),
+            _ => None,
+        }
+    }
+
+    pub fn into_api_retry(self) -> Option<ApiRetryResponse> {
+        match self {
+            Self::ApiRetry(r) => Some(r),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -443,12 +729,10 @@ impl Response {
                             inner: t.clone(),
                             message_id: message_id.clone(),
                         }),
-                        crate::proto::ContentBlock::ToolUse(t) => {
-                            Self::ToolUse(ToolUseResponse {
-                                inner: t.clone(),
-                                message_id: message_id.clone(),
-                            })
-                        }
+                        crate::proto::ContentBlock::ToolUse(t) => Self::ToolUse(ToolUseResponse {
+                            inner: t.clone(),
+                            message_id: message_id.clone(),
+                        }),
                         crate::proto::ContentBlock::ToolResult(t) => {
                             Self::ToolResult(ToolResultResponse(t.clone()))
                         }
@@ -456,12 +740,10 @@ impl Response {
                             Self::Thinking(ThinkingResponse(t.clone()))
                         }
                         crate::proto::ContentBlock::Image(_)
-                        | crate::proto::ContentBlock::Document(_) => {
-                            Self::Text(TextResponse {
-                                inner: ProtoText::new("[media]"),
-                                message_id: message_id.clone(),
-                            })
-                        }
+                        | crate::proto::ContentBlock::Document(_) => Self::Text(TextResponse {
+                            inner: ProtoText::new("[media]"),
+                            message_id: message_id.clone(),
+                        }),
                     })
                     .collect()
             }
@@ -473,8 +755,29 @@ impl Response {
                 SystemMessage::HookStarted(msg) => {
                     vec![Self::HookStarted(HookLifecycleResponse(msg.clone()))]
                 }
+                SystemMessage::HookProgress(msg) => {
+                    vec![Self::HookProgress(HookLifecycleResponse(msg.clone()))]
+                }
                 SystemMessage::HookResponse(msg) => {
                     vec![Self::HookResponse(HookLifecycleResponse(msg.clone()))]
+                }
+                SystemMessage::TaskStarted(msg) => {
+                    vec![Self::TaskStarted(TaskStartedResponse(msg.clone()))]
+                }
+                SystemMessage::TaskProgress(msg) => {
+                    vec![Self::TaskProgress(TaskProgressResponse(msg.clone()))]
+                }
+                SystemMessage::TaskUpdated(msg) => {
+                    vec![Self::TaskUpdated(TaskUpdatedResponse(msg.clone()))]
+                }
+                SystemMessage::TaskNotification(msg) => {
+                    vec![Self::TaskNotification(TaskNotificationResponse(msg.clone()))]
+                }
+                SystemMessage::Notification(msg) => {
+                    vec![Self::Notification(NotificationResponse(msg.clone()))]
+                }
+                SystemMessage::ApiRetry(msg) => {
+                    vec![Self::ApiRetry(ApiRetryResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],
@@ -554,6 +857,14 @@ impl Responses {
 
     pub fn rate_limits(&self) -> impl Iterator<Item = &RateLimitResponse> {
         self.0.iter().filter_map(|r| r.as_rate_limit())
+    }
+
+    pub fn notifications(&self) -> impl Iterator<Item = &NotificationResponse> {
+        self.0.iter().filter_map(|r| r.as_notification())
+    }
+
+    pub fn api_retries(&self) -> impl Iterator<Item = &ApiRetryResponse> {
+        self.0.iter().filter_map(|r| r.as_api_retry())
     }
 
     pub fn tool_use_by_name(&self, name: &str) -> Option<&ToolUseResponse> {
