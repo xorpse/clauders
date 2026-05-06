@@ -13,8 +13,8 @@ pub use incoming::{
 };
 pub use message::{
     ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner, ErrorMessage,
-    InitMessage, Message, NotificationMessage, OutgoingUserMessage, ResultMessage, SystemMessage,
-    TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, Usage, UserContent,
-    UserEnvelope, UserMessageInner,
+    InitMessage, Message, NotificationMessage, OutgoingUserMessage, ResultMessage, StatusKind,
+    StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
+    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, Usage,
+    UserContent, UserEnvelope, UserMessageInner,
 };

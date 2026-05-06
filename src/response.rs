@@ -9,10 +9,11 @@ use crate::proto::content_block::{
 };
 use crate::proto::message::{
     ApiRetryMessage, AssistantError, HookLifecycleMessage, InitMessage, NotificationMessage,
-    ResultMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
+    ResultMessage, StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage,
+    TaskNotificationStatus, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage,
+    TaskUsage, Usage,
 };
-use crate::proto::{Message, RateLimitEvent};
+use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -32,6 +33,7 @@ pub enum Response {
     TaskNotification(TaskNotificationResponse),
     Notification(NotificationResponse),
     ApiRetry(ApiRetryResponse),
+    Status(StatusResponse),
     Complete(CompleteResponse),
 }
 
@@ -57,6 +59,31 @@ impl NotificationResponse {
 
     pub fn session_id(&self) -> Option<&str> {
         self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StatusResponse(pub(crate) StatusMessage);
+
+impl StatusResponse {
+    pub fn status(&self) -> Option<StatusKind> {
+        self.0.status()
+    }
+
+    pub fn permission_mode(&self) -> Option<PermissionMode> {
+        self.0.permission_mode()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+
+    pub fn is_compacting(&self) -> bool {
+        matches!(self.status(), Some(StatusKind::Compacting))
     }
 }
 
@@ -516,6 +543,10 @@ impl Response {
         matches!(self, Self::ApiRetry(_))
     }
 
+    pub fn is_status(&self) -> bool {
+        matches!(self, Self::Status(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -610,6 +641,13 @@ impl Response {
     pub fn as_api_retry(&self) -> Option<&ApiRetryResponse> {
         match self {
             Self::ApiRetry(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_status(&self) -> Option<&StatusResponse> {
+        match self {
+            Self::Status(s) => Some(s),
             _ => None,
         }
     }
@@ -712,6 +750,13 @@ impl Response {
         }
     }
 
+    pub fn into_status(self) -> Option<StatusResponse> {
+        match self {
+            Self::Status(s) => Some(s),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -778,6 +823,9 @@ impl Response {
                 }
                 SystemMessage::ApiRetry(msg) => {
                     vec![Self::ApiRetry(ApiRetryResponse(msg.clone()))]
+                }
+                SystemMessage::Status(msg) => {
+                    vec![Self::Status(StatusResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],
