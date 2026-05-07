@@ -248,6 +248,88 @@ pub enum SystemMessage {
     Notification(NotificationMessage),
     Status(StatusMessage),
     CompactBoundary(CompactBoundaryMessage),
+    FilesPersisted(FilesPersistedMessage),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistedFile {
+    filename: String,
+    file_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl PersistedFile {
+    pub fn filename(&self) -> &str {
+        &self.filename
+    }
+
+    pub fn file_id(&self) -> &str {
+        &self.file_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FailedPersistedFile {
+    filename: String,
+    error: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl FailedPersistedFile {
+    pub fn filename(&self) -> &str {
+        &self.filename
+    }
+
+    pub fn error(&self) -> &str {
+        &self.error
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilesPersistedMessage {
+    files: Vec<PersistedFile>,
+    failed: Vec<FailedPersistedFile>,
+    processed_at: String,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl FilesPersistedMessage {
+    pub fn files(&self) -> &[PersistedFile] {
+        &self.files
+    }
+
+    pub fn failed(&self) -> &[FailedPersistedFile] {
+        &self.failed
+    }
+
+    pub fn processed_at(&self) -> &str {
+        &self.processed_at
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

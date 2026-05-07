@@ -9,9 +9,10 @@ use crate::proto::content_block::{
 };
 use crate::proto::message::{
     ApiRetryMessage, AssistantError, CompactBoundaryMessage, CompactMetadata, CompactTrigger,
-    HookLifecycleMessage, InitMessage, NotificationMessage, ResultMessage, StatusKind,
-    StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
+    FailedPersistedFile, FilesPersistedMessage, HookLifecycleMessage, InitMessage,
+    NotificationMessage, PersistedFile, ResultMessage, StatusKind, StatusMessage, SystemMessage,
+    TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
+    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -35,6 +36,7 @@ pub enum Response {
     ApiRetry(ApiRetryResponse),
     Status(StatusResponse),
     CompactBoundary(CompactBoundaryResponse),
+    FilesPersisted(FilesPersistedResponse),
     Complete(CompleteResponse),
 }
 
@@ -60,6 +62,35 @@ impl NotificationResponse {
 
     pub fn session_id(&self) -> Option<&str> {
         self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FilesPersistedResponse(pub(crate) FilesPersistedMessage);
+
+impl FilesPersistedResponse {
+    pub fn files(&self) -> &[PersistedFile] {
+        self.0.files()
+    }
+
+    pub fn failed(&self) -> &[FailedPersistedFile] {
+        self.0.failed()
+    }
+
+    pub fn processed_at(&self) -> &str {
+        self.0.processed_at()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+
+    pub fn has_failures(&self) -> bool {
+        !self.failed().is_empty()
     }
 }
 
@@ -585,6 +616,10 @@ impl Response {
         matches!(self, Self::CompactBoundary(_))
     }
 
+    pub fn is_files_persisted(&self) -> bool {
+        matches!(self, Self::FilesPersisted(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -693,6 +728,13 @@ impl Response {
     pub fn as_compact_boundary(&self) -> Option<&CompactBoundaryResponse> {
         match self {
             Self::CompactBoundary(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    pub fn as_files_persisted(&self) -> Option<&FilesPersistedResponse> {
+        match self {
+            Self::FilesPersisted(f) => Some(f),
             _ => None,
         }
     }
@@ -809,6 +851,13 @@ impl Response {
         }
     }
 
+    pub fn into_files_persisted(self) -> Option<FilesPersistedResponse> {
+        match self {
+            Self::FilesPersisted(f) => Some(f),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -881,6 +930,9 @@ impl Response {
                 }
                 SystemMessage::CompactBoundary(msg) => {
                     vec![Self::CompactBoundary(CompactBoundaryResponse(msg.clone()))]
+                }
+                SystemMessage::FilesPersisted(msg) => {
+                    vec![Self::FilesPersisted(FilesPersistedResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],
