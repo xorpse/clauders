@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 
 use crate::response::{
-    ApiRetryResponse, CompleteResponse, ErrorResponse, HookLifecycleResponse, InitResponse,
-    NotificationResponse, RateLimitResponse, Response, StatusResponse, TaskNotificationResponse,
-    TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
-    ToolResultResponse, ToolUseResponse,
+    ApiRetryResponse, CompactBoundaryResponse, CompleteResponse, ErrorResponse,
+    HookLifecycleResponse, InitResponse, NotificationResponse, RateLimitResponse, Response,
+    StatusResponse, TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse,
+    TaskUpdatedResponse, TextResponse, ThinkingResponse, ToolResultResponse, ToolUseResponse,
 };
 
 #[async_trait]
@@ -26,6 +26,7 @@ pub trait Handler: Send + Sync {
     async fn on_notification(&self, _notification: &NotificationResponse) {}
     async fn on_api_retry(&self, _retry: &ApiRetryResponse) {}
     async fn on_status(&self, _status: &StatusResponse) {}
+    async fn on_compact_boundary(&self, _boundary: &CompactBoundaryResponse) {}
     async fn on_complete(&self, _complete: &CompleteResponse) {}
 }
 
@@ -53,6 +54,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::Notification(n) => handler.on_notification(n).await,
         Response::ApiRetry(r) => handler.on_api_retry(r).await,
         Response::Status(s) => handler.on_status(s).await,
+        Response::CompactBoundary(c) => handler.on_compact_boundary(c).await,
         Response::Complete(c) => handler.on_complete(c).await,
     }
 }

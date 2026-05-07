@@ -247,6 +247,80 @@ pub enum SystemMessage {
     TaskNotification(TaskNotificationMessage),
     Notification(NotificationMessage),
     Status(StatusMessage),
+    CompactBoundary(CompactBoundaryMessage),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CompactTrigger {
+    Manual,
+    Auto,
+}
+
+impl std::fmt::Display for CompactTrigger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Manual => "manual",
+            Self::Auto => "auto",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompactMetadata {
+    trigger: CompactTrigger,
+    pre_tokens: i64,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl CompactMetadata {
+    pub fn trigger(&self) -> CompactTrigger {
+        self.trigger
+    }
+
+    pub fn pre_tokens(&self) -> i64 {
+        self.pre_tokens
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompactBoundaryMessage {
+    uuid: String,
+    session_id: String,
+    compact_metadata: CompactMetadata,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl CompactBoundaryMessage {
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn compact_metadata(&self) -> &CompactMetadata {
+        &self.compact_metadata
+    }
+
+    pub fn trigger(&self) -> CompactTrigger {
+        self.compact_metadata.trigger()
+    }
+
+    pub fn pre_tokens(&self) -> i64 {
+        self.compact_metadata.pre_tokens()
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

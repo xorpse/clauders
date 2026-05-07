@@ -8,10 +8,10 @@ use crate::proto::content_block::{
     ToolUse as ProtoToolUse,
 };
 use crate::proto::message::{
-    ApiRetryMessage, AssistantError, HookLifecycleMessage, InitMessage, NotificationMessage,
-    ResultMessage, StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage,
-    TaskNotificationStatus, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage,
-    TaskUsage, Usage,
+    ApiRetryMessage, AssistantError, CompactBoundaryMessage, CompactMetadata, CompactTrigger,
+    HookLifecycleMessage, InitMessage, NotificationMessage, ResultMessage, StatusKind,
+    StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
+    TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -34,6 +34,7 @@ pub enum Response {
     Notification(NotificationResponse),
     ApiRetry(ApiRetryResponse),
     Status(StatusResponse),
+    CompactBoundary(CompactBoundaryResponse),
     Complete(CompleteResponse),
 }
 
@@ -59,6 +60,39 @@ impl NotificationResponse {
 
     pub fn session_id(&self) -> Option<&str> {
         self.0.session_id()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompactBoundaryResponse(pub(crate) CompactBoundaryMessage);
+
+impl CompactBoundaryResponse {
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
+
+    pub fn compact_metadata(&self) -> &CompactMetadata {
+        self.0.compact_metadata()
+    }
+
+    pub fn trigger(&self) -> CompactTrigger {
+        self.0.trigger()
+    }
+
+    pub fn pre_tokens(&self) -> i64 {
+        self.0.pre_tokens()
+    }
+
+    pub fn is_manual(&self) -> bool {
+        matches!(self.trigger(), CompactTrigger::Manual)
+    }
+
+    pub fn is_auto(&self) -> bool {
+        matches!(self.trigger(), CompactTrigger::Auto)
     }
 }
 
@@ -547,6 +581,10 @@ impl Response {
         matches!(self, Self::Status(_))
     }
 
+    pub fn is_compact_boundary(&self) -> bool {
+        matches!(self, Self::CompactBoundary(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -648,6 +686,13 @@ impl Response {
     pub fn as_status(&self) -> Option<&StatusResponse> {
         match self {
             Self::Status(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_compact_boundary(&self) -> Option<&CompactBoundaryResponse> {
+        match self {
+            Self::CompactBoundary(c) => Some(c),
             _ => None,
         }
     }
@@ -757,6 +802,13 @@ impl Response {
         }
     }
 
+    pub fn into_compact_boundary(self) -> Option<CompactBoundaryResponse> {
+        match self {
+            Self::CompactBoundary(c) => Some(c),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -826,6 +878,9 @@ impl Response {
                 }
                 SystemMessage::Status(msg) => {
                     vec![Self::Status(StatusResponse(msg.clone()))]
+                }
+                SystemMessage::CompactBoundary(msg) => {
+                    vec![Self::CompactBoundary(CompactBoundaryResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],

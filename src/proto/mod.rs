@@ -12,9 +12,10 @@ pub use incoming::{
     ControlRequestEnvelope, ControlResponseEnvelope, Incoming, RateLimitEvent, RateLimitStatus,
 };
 pub use message::{
-    ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner, ErrorMessage,
-    InitMessage, Message, NotificationMessage, OutgoingUserMessage, ResultMessage, StatusKind,
-    StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch,
-    TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, Usage,
-    UserContent, UserEnvelope, UserMessageInner,
+    ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner,
+    CompactBoundaryMessage, CompactMetadata, CompactTrigger, ErrorMessage, InitMessage, Message,
+    NotificationMessage, OutgoingUserMessage, ResultMessage, StatusKind, StatusMessage,
+    SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
+    TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, Usage, UserContent,
+    UserEnvelope, UserMessageInner,
 };

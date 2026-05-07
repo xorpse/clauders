@@ -57,11 +57,11 @@ pub use permissions::{
     Callback as PermissionCallback, Decision, PermissionContext, PermissionMode, PermissionRule,
 };
 pub use proto::incoming::RateLimitStatus;
-pub use proto::message::{AssistantError, StatusKind, Usage};
+pub use proto::message::{AssistantError, CompactMetadata, CompactTrigger, StatusKind, Usage};
 pub use response::{
-    ApiRetryResponse, CompleteResponse, ErrorResponse, HookLifecycleResponse, InitResponse,
-    NotificationResponse, RateLimitResponse, Response, Responses, StatusResponse,
-    TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse,
-    TextResponse, ThinkingResponse, ToolResultResponse, ToolUseResponse,
+    ApiRetryResponse, CompactBoundaryResponse, CompleteResponse, ErrorResponse,
+    HookLifecycleResponse, InitResponse, NotificationResponse, RateLimitResponse, Response,
+    Responses, StatusResponse, TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse,
+    TaskUpdatedResponse, TextResponse, ThinkingResponse, ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};
