@@ -460,7 +460,7 @@ impl StatusMessage {
 pub struct ApiRetryMessage {
     attempt: i32,
     max_retries: i32,
-    retry_delay_ms: i64,
+    retry_delay_ms: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     error_status: Option<i32>,
     error: String,
@@ -476,7 +476,7 @@ impl ApiRetryMessage {
     pub fn new(
         attempt: i32,
         max_retries: i32,
-        retry_delay_ms: i64,
+        retry_delay_ms: f64,
         error: impl Into<String>,
     ) -> Self {
         Self {
@@ -499,7 +499,7 @@ impl ApiRetryMessage {
         self.max_retries
     }
 
-    pub fn retry_delay_ms(&self) -> i64 {
+    pub fn retry_delay_ms(&self) -> f64 {
         self.retry_delay_ms
     }
 
@@ -653,7 +653,7 @@ impl TaskProgressMessage {
 pub struct TaskUsage {
     total_tokens: i64,
     tool_uses: i64,
-    duration_ms: i64,
+    duration_ms: f64,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
@@ -667,7 +667,7 @@ impl TaskUsage {
         self.tool_uses
     }
 
-    pub fn duration_ms(&self) -> i64 {
+    pub fn duration_ms(&self) -> f64 {
         self.duration_ms
     }
 
@@ -717,7 +717,7 @@ pub struct TaskPatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     end_time: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    total_paused_ms: Option<i64>,
+    total_paused_ms: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -739,7 +739,7 @@ impl TaskPatch {
         self.end_time
     }
 
-    pub fn total_paused_ms(&self) -> Option<i64> {
+    pub fn total_paused_ms(&self) -> Option<f64> {
         self.total_paused_ms
     }
 
@@ -1026,8 +1026,8 @@ impl ErrorMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultMessage {
     subtype: String,
-    duration_ms: i64,
-    duration_api_ms: i64,
+    duration_ms: f64,
+    duration_api_ms: f64,
     is_error: bool,
     num_turns: i32,
     session_id: String,
@@ -1047,8 +1047,8 @@ impl ResultMessage {
     pub fn new(subtype: impl Into<String>, session_id: impl Into<String>) -> Self {
         Self {
             subtype: subtype.into(),
-            duration_ms: 0,
-            duration_api_ms: 0,
+            duration_ms: 0.0,
+            duration_api_ms: 0.0,
             is_error: false,
             num_turns: 0,
             session_id: session_id.into(),
@@ -1065,11 +1065,11 @@ impl ResultMessage {
         &self.subtype
     }
 
-    pub fn duration_ms(&self) -> i64 {
+    pub fn duration_ms(&self) -> f64 {
         self.duration_ms
     }
 
-    pub fn duration_api_ms(&self) -> i64 {
+    pub fn duration_api_ms(&self) -> f64 {
         self.duration_api_ms
     }
 
@@ -1110,11 +1110,11 @@ impl ResultMessage {
         self.subtype = subtype.into();
     }
 
-    pub fn set_duration_ms(&mut self, duration_ms: i64) {
+    pub fn set_duration_ms(&mut self, duration_ms: f64) {
         self.duration_ms = duration_ms;
     }
 
-    pub fn set_duration_api_ms(&mut self, duration_api_ms: i64) {
+    pub fn set_duration_api_ms(&mut self, duration_api_ms: f64) {
         self.duration_api_ms = duration_api_ms;
     }
 
@@ -1156,12 +1156,12 @@ impl ResultMessage {
         self
     }
 
-    pub fn with_duration_ms(mut self, duration_ms: i64) -> Self {
+    pub fn with_duration_ms(mut self, duration_ms: f64) -> Self {
         self.set_duration_ms(duration_ms);
         self
     }
 
-    pub fn with_duration_api_ms(mut self, duration_api_ms: i64) -> Self {
+    pub fn with_duration_api_ms(mut self, duration_api_ms: f64) -> Self {
         self.set_duration_api_ms(duration_api_ms);
         self
     }

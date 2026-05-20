@@ -164,7 +164,7 @@ impl ApiRetryResponse {
         self.0.max_retries()
     }
 
-    pub fn retry_delay_ms(&self) -> i64 {
+    pub fn retry_delay_ms(&self) -> f64 {
         self.0.retry_delay_ms()
     }
 
@@ -514,11 +514,11 @@ impl CompleteResponse {
         self.0.subtype()
     }
 
-    pub fn duration_ms(&self) -> i64 {
+    pub fn duration_ms(&self) -> f64 {
         self.0.duration_ms()
     }
 
-    pub fn duration_api_ms(&self) -> i64 {
+    pub fn duration_api_ms(&self) -> f64 {
         self.0.duration_api_ms()
     }
 
@@ -917,7 +917,9 @@ impl Response {
                     vec![Self::TaskUpdated(TaskUpdatedResponse(msg.clone()))]
                 }
                 SystemMessage::TaskNotification(msg) => {
-                    vec![Self::TaskNotification(TaskNotificationResponse(msg.clone()))]
+                    vec![Self::TaskNotification(TaskNotificationResponse(
+                        msg.clone(),
+                    ))]
                 }
                 SystemMessage::Notification(msg) => {
                     vec![Self::Notification(NotificationResponse(msg.clone()))]
