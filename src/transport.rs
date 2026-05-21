@@ -53,6 +53,7 @@ pub struct TransportOptions {
     agents: HashMap<String, Agent>,
     strict_mcp_config: bool,
     disable_slash_commands: bool,
+    add_dirs: Vec<PathBuf>,
 }
 
 impl TransportOptions {
@@ -110,6 +111,10 @@ impl TransportOptions {
 
     pub fn agents(&self) -> &HashMap<String, Agent> {
         &self.agents
+    }
+
+    pub fn add_dirs(&self) -> &[PathBuf] {
+        &self.add_dirs
     }
 
     pub fn tools(&self) -> impl Iterator<Item = &str> {
@@ -305,6 +310,16 @@ impl Transport {
                 "--agents".to_owned(),
                 serde_json::to_string(&options.agents).expect("Agents serialisation"),
             ]);
+        }
+
+        if !options.add_dirs.is_empty() {
+            cmd.push("--add-dir".to_owned());
+            cmd.extend(
+                options
+                    .add_dirs
+                    .iter()
+                    .map(|p| p.to_string_lossy().into_owned()),
+            );
         }
 
         cmd.extend(["--input-format".to_owned(), "stream-json".to_owned()]);

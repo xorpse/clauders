@@ -43,6 +43,7 @@ pub struct Options {
     resume_session_at: Option<String>,
     strict_mcp_config: bool,
     disable_slash_commands: bool,
+    add_dirs: Vec<PathBuf>,
 }
 
 impl Options {
@@ -250,6 +251,24 @@ impl Options {
         self
     }
 
+    #[must_use]
+    pub fn add_dir(mut self, dir: impl AsRef<Path>) -> Self {
+        self.add_dirs.push(dir.as_ref().to_path_buf());
+        self
+    }
+
+    #[must_use]
+    pub fn add_dirs(
+        mut self,
+        dirs: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Self {
+        self.add_dirs = dirs
+            .into_iter()
+            .map(|d| d.as_ref().to_path_buf())
+            .collect();
+        self
+    }
+
     pub(crate) fn mcp_servers(&self) -> &HashMap<String, Arc<McpServer>> {
         &self.mcp_servers
     }
@@ -319,6 +338,7 @@ impl Options {
         builder.agents(self.agents.clone());
         builder.strict_mcp_config(self.strict_mcp_config);
         builder.disable_slash_commands(self.disable_slash_commands);
+        builder.add_dirs(self.add_dirs.clone());
 
         builder.build().expect("all fields have defaults")
     }
