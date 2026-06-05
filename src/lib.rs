@@ -66,6 +66,6 @@ pub use response::{
     FilesPersistedResponse, HookLifecycleResponse, InitResponse, NotificationResponse,
     RateLimitResponse, Response, Responses, StatusResponse, TaskNotificationResponse,
     TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
-    ToolResultResponse, ToolUseResponse,
+    ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};

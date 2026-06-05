@@ -12,7 +12,7 @@ use crate::proto::message::{
     FailedPersistedFile, FilesPersistedMessage, HookLifecycleMessage, InitMessage,
     NotificationMessage, PersistedFile, ResultMessage, StatusKind, StatusMessage, SystemMessage,
     TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, Usage,
+    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -37,7 +37,29 @@ pub enum Response {
     Status(StatusResponse),
     CompactBoundary(CompactBoundaryResponse),
     FilesPersisted(FilesPersistedResponse),
+    ThinkingTokens(ThinkingTokensResponse),
     Complete(CompleteResponse),
+}
+
+#[derive(Debug, Clone)]
+pub struct ThinkingTokensResponse(pub(crate) ThinkingTokensMessage);
+
+impl ThinkingTokensResponse {
+    pub fn estimated_tokens(&self) -> i64 {
+        self.0.estimated_tokens()
+    }
+
+    pub fn estimated_tokens_delta(&self) -> i64 {
+        self.0.estimated_tokens_delta()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -620,6 +642,10 @@ impl Response {
         matches!(self, Self::FilesPersisted(_))
     }
 
+    pub fn is_thinking_tokens(&self) -> bool {
+        matches!(self, Self::ThinkingTokens(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -735,6 +761,13 @@ impl Response {
     pub fn as_files_persisted(&self) -> Option<&FilesPersistedResponse> {
         match self {
             Self::FilesPersisted(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn as_thinking_tokens(&self) -> Option<&ThinkingTokensResponse> {
+        match self {
+            Self::ThinkingTokens(t) => Some(t),
             _ => None,
         }
     }
@@ -858,6 +891,13 @@ impl Response {
         }
     }
 
+    pub fn into_thinking_tokens(self) -> Option<ThinkingTokensResponse> {
+        match self {
+            Self::ThinkingTokens(t) => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -935,6 +975,9 @@ impl Response {
                 }
                 SystemMessage::FilesPersisted(msg) => {
                     vec![Self::FilesPersisted(FilesPersistedResponse(msg.clone()))]
+                }
+                SystemMessage::ThinkingTokens(msg) => {
+                    vec![Self::ThinkingTokens(ThinkingTokensResponse(msg.clone()))]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],

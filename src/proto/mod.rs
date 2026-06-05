@@ -17,6 +17,6 @@ pub use message::{
     FilesPersistedMessage, InitMessage, Message, NotificationMessage, OutgoingUserMessage,
     PersistedFile, ResultMessage, StatusKind, StatusMessage, SystemMessage,
     TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, Usage, UserContent,
-    UserEnvelope, UserMessageInner,
+    TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
+    UserContent, UserEnvelope, UserMessageInner,
 };

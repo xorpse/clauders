@@ -249,6 +249,7 @@ pub enum SystemMessage {
     Status(StatusMessage),
     CompactBoundary(CompactBoundaryMessage),
     FilesPersisted(FilesPersistedMessage),
+    ThinkingTokens(ThinkingTokensMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -317,6 +318,38 @@ impl FilesPersistedMessage {
 
     pub fn processed_at(&self) -> &str {
         &self.processed_at
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkingTokensMessage {
+    estimated_tokens: i64,
+    estimated_tokens_delta: i64,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl ThinkingTokensMessage {
+    pub fn estimated_tokens(&self) -> i64 {
+        self.estimated_tokens
+    }
+
+    pub fn estimated_tokens_delta(&self) -> i64 {
+        self.estimated_tokens_delta
     }
 
     pub fn uuid(&self) -> &str {
