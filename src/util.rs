@@ -15,7 +15,6 @@ pub(crate) fn schema_for<T: JsonSchema>() -> Value {
 fn strip_schema_metadata(value: &mut Value) {
     if let Some(obj) = value.as_object_mut() {
         obj.remove("title");
-        obj.remove("description");
         obj.remove("$schema");
         obj.remove("format");
 
