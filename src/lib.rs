@@ -59,13 +59,13 @@ pub use permissions::{
 pub use proto::incoming::RateLimitStatus;
 pub use proto::message::{
     AssistantError, CompactMetadata, CompactTrigger, FailedPersistedFile, PersistedFile,
-    StatusKind, Usage,
+    SlashCommand, StatusKind, Usage,
 };
 pub use response::{
-    ApiRetryResponse, CompactBoundaryResponse, CompleteResponse, ErrorResponse,
-    FilesPersistedResponse, HookLifecycleResponse, InitResponse, NotificationResponse,
-    RateLimitResponse, Response, Responses, StatusResponse, TaskNotificationResponse,
-    TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
-    ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
+    ApiRetryResponse, CommandsChangedResponse, CompactBoundaryResponse, CompleteResponse,
+    ErrorResponse, FilesPersistedResponse, HookLifecycleResponse, InitResponse,
+    NotificationResponse, RateLimitResponse, Response, Responses, StatusResponse,
+    TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse,
+    TextResponse, ThinkingResponse, ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};

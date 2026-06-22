@@ -13,10 +13,10 @@ pub use incoming::{
 };
 pub use message::{
     ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner,
-    CompactBoundaryMessage, CompactMetadata, CompactTrigger, ErrorMessage, FailedPersistedFile,
-    FilesPersistedMessage, InitMessage, Message, NotificationMessage, OutgoingUserMessage,
-    PersistedFile, ResultMessage, StatusKind, StatusMessage, SystemMessage,
-    TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
+    CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata, CompactTrigger, ErrorMessage,
+    FailedPersistedFile, FilesPersistedMessage, InitMessage, Message, NotificationMessage,
+    OutgoingUserMessage, PersistedFile, ResultMessage, SlashCommand, StatusKind, StatusMessage,
+    SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
     TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
     UserContent, UserEnvelope, UserMessageInner,
 };

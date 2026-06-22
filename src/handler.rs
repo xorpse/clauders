@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 
 use crate::response::{
-    ApiRetryResponse, CompactBoundaryResponse, CompleteResponse, ErrorResponse,
-    FilesPersistedResponse, HookLifecycleResponse, InitResponse, NotificationResponse,
-    RateLimitResponse, Response, StatusResponse, TaskNotificationResponse, TaskProgressResponse,
-    TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
+    ApiRetryResponse, CommandsChangedResponse, CompactBoundaryResponse, CompleteResponse,
+    ErrorResponse, FilesPersistedResponse, HookLifecycleResponse, InitResponse,
+    NotificationResponse, RateLimitResponse, Response, StatusResponse, TaskNotificationResponse,
+    TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
     ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 
@@ -30,6 +30,7 @@ pub trait Handler: Send + Sync {
     async fn on_compact_boundary(&self, _boundary: &CompactBoundaryResponse) {}
     async fn on_files_persisted(&self, _files: &FilesPersistedResponse) {}
     async fn on_thinking_tokens(&self, _tokens: &ThinkingTokensResponse) {}
+    async fn on_commands_changed(&self, _commands: &CommandsChangedResponse) {}
     async fn on_complete(&self, _complete: &CompleteResponse) {}
 }
 
@@ -60,6 +61,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::CompactBoundary(c) => handler.on_compact_boundary(c).await,
         Response::FilesPersisted(f) => handler.on_files_persisted(f).await,
         Response::ThinkingTokens(t) => handler.on_thinking_tokens(t).await,
+        Response::CommandsChanged(c) => handler.on_commands_changed(c).await,
         Response::Complete(c) => handler.on_complete(c).await,
     }
 }

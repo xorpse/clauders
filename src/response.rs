@@ -8,11 +8,12 @@ use crate::proto::content_block::{
     ToolUse as ProtoToolUse,
 };
 use crate::proto::message::{
-    ApiRetryMessage, AssistantError, CompactBoundaryMessage, CompactMetadata, CompactTrigger,
-    FailedPersistedFile, FilesPersistedMessage, HookLifecycleMessage, InitMessage,
-    NotificationMessage, PersistedFile, ResultMessage, StatusKind, StatusMessage, SystemMessage,
-    TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
+    ApiRetryMessage, AssistantError, CommandsChangedMessage, CompactBoundaryMessage,
+    CompactMetadata, CompactTrigger, FailedPersistedFile, FilesPersistedMessage,
+    HookLifecycleMessage, InitMessage, NotificationMessage, PersistedFile, ResultMessage,
+    SlashCommand, StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage,
+    TaskNotificationStatus, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage,
+    TaskUsage, ThinkingTokensMessage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -38,7 +39,25 @@ pub enum Response {
     CompactBoundary(CompactBoundaryResponse),
     FilesPersisted(FilesPersistedResponse),
     ThinkingTokens(ThinkingTokensResponse),
+    CommandsChanged(CommandsChangedResponse),
     Complete(CompleteResponse),
+}
+
+#[derive(Debug, Clone)]
+pub struct CommandsChangedResponse(pub(crate) CommandsChangedMessage);
+
+impl CommandsChangedResponse {
+    pub fn commands(&self) -> &[SlashCommand] {
+        self.0.commands()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -646,6 +665,10 @@ impl Response {
         matches!(self, Self::ThinkingTokens(_))
     }
 
+    pub fn is_commands_changed(&self) -> bool {
+        matches!(self, Self::CommandsChanged(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -768,6 +791,13 @@ impl Response {
     pub fn as_thinking_tokens(&self) -> Option<&ThinkingTokensResponse> {
         match self {
             Self::ThinkingTokens(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_commands_changed(&self) -> Option<&CommandsChangedResponse> {
+        match self {
+            Self::CommandsChanged(c) => Some(c),
             _ => None,
         }
     }
@@ -898,6 +928,13 @@ impl Response {
         }
     }
 
+    pub fn into_commands_changed(self) -> Option<CommandsChangedResponse> {
+        match self {
+            Self::CommandsChanged(c) => Some(c),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -975,6 +1012,9 @@ impl Response {
                 }
                 SystemMessage::FilesPersisted(msg) => {
                     vec![Self::FilesPersisted(FilesPersistedResponse(msg.clone()))]
+                }
+                SystemMessage::CommandsChanged(msg) => {
+                    vec![Self::CommandsChanged(CommandsChangedResponse(msg.clone()))]
                 }
                 SystemMessage::ThinkingTokens(msg) => {
                     vec![Self::ThinkingTokens(ThinkingTokensResponse(msg.clone()))]

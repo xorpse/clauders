@@ -250,6 +250,7 @@ pub enum SystemMessage {
     CompactBoundary(CompactBoundaryMessage),
     FilesPersisted(FilesPersistedMessage),
     ThinkingTokens(ThinkingTokensMessage),
+    CommandsChanged(CommandsChangedMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -350,6 +351,61 @@ impl ThinkingTokensMessage {
 
     pub fn estimated_tokens_delta(&self) -> i64 {
         self.estimated_tokens_delta
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlashCommand {
+    name: String,
+    description: String,
+    #[serde(rename = "argumentHint")]
+    argument_hint: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl SlashCommand {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn argument_hint(&self) -> &str {
+        &self.argument_hint
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandsChangedMessage {
+    commands: Vec<SlashCommand>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl CommandsChangedMessage {
+    pub fn commands(&self) -> &[SlashCommand] {
+        &self.commands
     }
 
     pub fn uuid(&self) -> &str {
