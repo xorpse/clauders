@@ -251,6 +251,7 @@ pub enum SystemMessage {
     FilesPersisted(FilesPersistedMessage),
     ThinkingTokens(ThinkingTokensMessage),
     CommandsChanged(CommandsChangedMessage),
+    BackgroundTasksChanged(BackgroundTasksChangedMessage),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -406,6 +407,61 @@ pub struct CommandsChangedMessage {
 impl CommandsChangedMessage {
     pub fn commands(&self) -> &[SlashCommand] {
         &self.commands
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackgroundTask {
+    task_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    task_type: Option<String>,
+    description: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl BackgroundTask {
+    pub fn task_id(&self) -> &str {
+        &self.task_id
+    }
+
+    pub fn task_type(&self) -> Option<&str> {
+        self.task_type.as_deref()
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackgroundTasksChangedMessage {
+    tasks: Vec<BackgroundTask>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl BackgroundTasksChangedMessage {
+    pub fn tasks(&self) -> &[BackgroundTask] {
+        &self.tasks
     }
 
     pub fn uuid(&self) -> &str {
@@ -1518,5 +1574,29 @@ impl OutgoingUserMessage {
     pub fn with_message(mut self, message: OutgoingUserInner) -> Self {
         self.set_message(message);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialise_background_tasks_changed() {
+        let line = r#"{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"a0a707146caabd1bd","task_type":"local_agent","description":"Search for complete glibc CVE-2026-5450 patch diff"}],"uuid":"3f3f8e83-fbf6-4bb2-a236-f3c60bf78923","session_id":"5730601e-e51b-4f90-88d0-bf048a305f72"}"#;
+        let msg: Message = serde_json::from_str(line).unwrap();
+        let Message::System(SystemMessage::BackgroundTasksChanged(msg)) = msg else {
+            panic!("expected background_tasks_changed system message, got {msg:?}");
+        };
+        assert_eq!(msg.tasks().len(), 1);
+        let task = &msg.tasks()[0];
+        assert_eq!(task.task_id(), "a0a707146caabd1bd");
+        assert_eq!(task.task_type(), Some("local_agent"));
+        assert_eq!(
+            task.description(),
+            "Search for complete glibc CVE-2026-5450 patch diff"
+        );
+        assert_eq!(msg.uuid(), "3f3f8e83-fbf6-4bb2-a236-f3c60bf78923");
+        assert_eq!(msg.session_id(), "5730601e-e51b-4f90-88d0-bf048a305f72");
     }
 }

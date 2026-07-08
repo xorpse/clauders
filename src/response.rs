@@ -8,12 +8,12 @@ use crate::proto::content_block::{
     ToolUse as ProtoToolUse,
 };
 use crate::proto::message::{
-    ApiRetryMessage, AssistantError, CommandsChangedMessage, CompactBoundaryMessage,
-    CompactMetadata, CompactTrigger, FailedPersistedFile, FilesPersistedMessage,
-    HookLifecycleMessage, InitMessage, NotificationMessage, PersistedFile, ResultMessage,
-    SlashCommand, StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage,
-    TaskNotificationStatus, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage,
-    TaskUsage, ThinkingTokensMessage, Usage,
+    ApiRetryMessage, AssistantError, BackgroundTask, BackgroundTasksChangedMessage,
+    CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata, CompactTrigger,
+    FailedPersistedFile, FilesPersistedMessage, HookLifecycleMessage, InitMessage,
+    NotificationMessage, PersistedFile, ResultMessage, SlashCommand, StatusKind, StatusMessage,
+    SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
+    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -40,7 +40,25 @@ pub enum Response {
     FilesPersisted(FilesPersistedResponse),
     ThinkingTokens(ThinkingTokensResponse),
     CommandsChanged(CommandsChangedResponse),
+    BackgroundTasksChanged(BackgroundTasksChangedResponse),
     Complete(CompleteResponse),
+}
+
+#[derive(Debug, Clone)]
+pub struct BackgroundTasksChangedResponse(pub(crate) BackgroundTasksChangedMessage);
+
+impl BackgroundTasksChangedResponse {
+    pub fn tasks(&self) -> &[BackgroundTask] {
+        self.0.tasks()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -669,6 +687,10 @@ impl Response {
         matches!(self, Self::CommandsChanged(_))
     }
 
+    pub fn is_background_tasks_changed(&self) -> bool {
+        matches!(self, Self::BackgroundTasksChanged(_))
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -798,6 +820,13 @@ impl Response {
     pub fn as_commands_changed(&self) -> Option<&CommandsChangedResponse> {
         match self {
             Self::CommandsChanged(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    pub fn as_background_tasks_changed(&self) -> Option<&BackgroundTasksChangedResponse> {
+        match self {
+            Self::BackgroundTasksChanged(b) => Some(b),
             _ => None,
         }
     }
@@ -935,6 +964,13 @@ impl Response {
         }
     }
 
+    pub fn into_background_tasks_changed(self) -> Option<BackgroundTasksChangedResponse> {
+        match self {
+            Self::BackgroundTasksChanged(b) => Some(b),
+            _ => None,
+        }
+    }
+
     pub fn from_message(msg: &Message) -> Vec<Self> {
         match msg {
             Message::User(_) => vec![],
@@ -1018,6 +1054,11 @@ impl Response {
                 }
                 SystemMessage::ThinkingTokens(msg) => {
                     vec![Self::ThinkingTokens(ThinkingTokensResponse(msg.clone()))]
+                }
+                SystemMessage::BackgroundTasksChanged(msg) => {
+                    vec![Self::BackgroundTasksChanged(
+                        BackgroundTasksChangedResponse(msg.clone()),
+                    )]
                 }
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],

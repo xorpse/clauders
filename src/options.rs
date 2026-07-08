@@ -258,14 +258,8 @@ impl Options {
     }
 
     #[must_use]
-    pub fn add_dirs(
-        mut self,
-        dirs: impl IntoIterator<Item = impl AsRef<Path>>,
-    ) -> Self {
-        self.add_dirs = dirs
-            .into_iter()
-            .map(|d| d.as_ref().to_path_buf())
-            .collect();
+    pub fn add_dirs(mut self, dirs: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
+        self.add_dirs = dirs.into_iter().map(|d| d.as_ref().to_path_buf()).collect();
         self
     }
 

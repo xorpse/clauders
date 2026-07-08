@@ -12,11 +12,11 @@ pub use incoming::{
     ControlRequestEnvelope, ControlResponseEnvelope, Incoming, RateLimitEvent, RateLimitStatus,
 };
 pub use message::{
-    ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner,
-    CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata, CompactTrigger, ErrorMessage,
-    FailedPersistedFile, FilesPersistedMessage, InitMessage, Message, NotificationMessage,
-    OutgoingUserMessage, PersistedFile, ResultMessage, SlashCommand, StatusKind, StatusMessage,
-    SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
-    UserContent, UserEnvelope, UserMessageInner,
+    ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner, BackgroundTask,
+    BackgroundTasksChangedMessage, CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata,
+    CompactTrigger, ErrorMessage, FailedPersistedFile, FilesPersistedMessage, InitMessage, Message,
+    NotificationMessage, OutgoingUserMessage, PersistedFile, ResultMessage, SlashCommand,
+    StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus,
+    TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage,
+    ThinkingTokensMessage, Usage, UserContent, UserEnvelope, UserMessageInner,
 };
