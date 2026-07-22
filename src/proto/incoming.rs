@@ -17,6 +17,7 @@ pub enum Incoming {
     ControlRequest(ControlRequestEnvelope),
     ControlResponse(ControlResponseEnvelope),
     RateLimitEvent(RateLimitEvent),
+    ToolProgress(ToolProgressMessage),
 }
 
 /// Incoming control request envelope (CLI → SDK).
@@ -198,6 +199,55 @@ impl RateLimitEvent {
     }
 }
 
+/// Progress update emitted periodically while a tool is executing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolProgressMessage {
+    tool_use_id: String,
+    tool_name: String,
+    parent_tool_use_id: Option<String>,
+    elapsed_time_seconds: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    task_id: Option<String>,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl ToolProgressMessage {
+    pub fn tool_use_id(&self) -> &str {
+        &self.tool_use_id
+    }
+
+    pub fn tool_name(&self) -> &str {
+        &self.tool_name
+    }
+
+    pub fn parent_tool_use_id(&self) -> Option<&str> {
+        self.parent_tool_use_id.as_deref()
+    }
+
+    pub fn elapsed_time_seconds(&self) -> f64 {
+        self.elapsed_time_seconds
+    }
+
+    pub fn task_id(&self) -> Option<&str> {
+        self.task_id.as_deref()
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
 impl Incoming {
     pub fn to_message(&self) -> Option<Message> {
         match self {
@@ -226,6 +276,13 @@ impl Incoming {
     pub fn as_rate_limit_event(&self) -> Option<&RateLimitEvent> {
         match self {
             Self::RateLimitEvent(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_tool_progress(&self) -> Option<&ToolProgressMessage> {
+        match self {
+            Self::ToolProgress(progress) => Some(progress),
             _ => None,
         }
     }

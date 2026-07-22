@@ -10,6 +10,7 @@ pub use control::{
 };
 pub use incoming::{
     ControlRequestEnvelope, ControlResponseEnvelope, Incoming, RateLimitEvent, RateLimitStatus,
+    ToolProgressMessage,
 };
 pub use message::{
     ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner, BackgroundTask,
