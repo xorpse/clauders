@@ -16,8 +16,9 @@ pub use message::{
     ApiRetryMessage, AssistantEnvelope, AssistantError, AssistantMessageInner, BackgroundTask,
     BackgroundTasksChangedMessage, CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata,
     CompactTrigger, ErrorMessage, FailedPersistedFile, FilesPersistedMessage, InitMessage, Message,
-    NotificationMessage, OutgoingUserMessage, PersistedFile, ResultMessage, SlashCommand,
-    StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus,
-    TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus, TaskUpdatedMessage, TaskUsage,
-    ThinkingTokensMessage, Usage, UserContent, UserEnvelope, UserMessageInner,
+    NotificationMessage, OutgoingUserMessage, PermissionDeniedMessage, PersistedFile,
+    ResultMessage, SlashCommand, StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage,
+    TaskNotificationStatus, TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskStatus,
+    TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage, UserContent, UserEnvelope,
+    UserMessageInner,
 };

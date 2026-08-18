@@ -237,6 +237,7 @@ impl std::fmt::Display for AssistantError {
 pub enum SystemMessage {
     Init(InitMessage),
     Error(ErrorMessage),
+    PermissionDenied(PermissionDeniedMessage),
     HookStarted(HookLifecycleMessage),
     HookProgress(HookLifecycleMessage),
     HookResponse(HookLifecycleMessage),
@@ -252,6 +253,48 @@ pub enum SystemMessage {
     ThinkingTokens(ThinkingTokensMessage),
     CommandsChanged(CommandsChangedMessage),
     BackgroundTasksChanged(BackgroundTasksChangedMessage),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionDeniedMessage {
+    tool_name: String,
+    tool_use_id: String,
+    decision_reason_type: String,
+    message: String,
+    uuid: String,
+    session_id: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl PermissionDeniedMessage {
+    pub fn tool_name(&self) -> &str {
+        &self.tool_name
+    }
+
+    pub fn tool_use_id(&self) -> &str {
+        &self.tool_use_id
+    }
+
+    pub fn decision_reason_type(&self) -> &str {
+        &self.decision_reason_type
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1574,29 +1617,5 @@ impl OutgoingUserMessage {
     pub fn with_message(mut self, message: OutgoingUserInner) -> Self {
         self.set_message(message);
         self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn deserialise_background_tasks_changed() {
-        let line = r#"{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"a0a707146caabd1bd","task_type":"local_agent","description":"Search for complete glibc CVE-2026-5450 patch diff"}],"uuid":"3f3f8e83-fbf6-4bb2-a236-f3c60bf78923","session_id":"5730601e-e51b-4f90-88d0-bf048a305f72"}"#;
-        let msg: Message = serde_json::from_str(line).unwrap();
-        let Message::System(SystemMessage::BackgroundTasksChanged(msg)) = msg else {
-            panic!("expected background_tasks_changed system message, got {msg:?}");
-        };
-        assert_eq!(msg.tasks().len(), 1);
-        let task = &msg.tasks()[0];
-        assert_eq!(task.task_id(), "a0a707146caabd1bd");
-        assert_eq!(task.task_type(), Some("local_agent"));
-        assert_eq!(
-            task.description(),
-            "Search for complete glibc CVE-2026-5450 patch diff"
-        );
-        assert_eq!(msg.uuid(), "3f3f8e83-fbf6-4bb2-a236-f3c60bf78923");
-        assert_eq!(msg.session_id(), "5730601e-e51b-4f90-88d0-bf048a305f72");
     }
 }

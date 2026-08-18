@@ -3,10 +3,10 @@ use async_trait::async_trait;
 use crate::response::{
     ApiRetryResponse, BackgroundTasksChangedResponse, CommandsChangedResponse,
     CompactBoundaryResponse, CompleteResponse, ErrorResponse, FilesPersistedResponse,
-    HookLifecycleResponse, InitResponse, NotificationResponse, RateLimitResponse, Response,
-    StatusResponse, TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse,
-    TaskUpdatedResponse, TextResponse, ThinkingResponse, ThinkingTokensResponse,
-    ToolResultResponse, ToolUseResponse,
+    HookLifecycleResponse, InitResponse, NotificationResponse, PermissionDeniedResponse,
+    RateLimitResponse, Response, StatusResponse, TaskNotificationResponse, TaskProgressResponse,
+    TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
+    ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 
 #[async_trait]
@@ -17,6 +17,7 @@ pub trait Handler: Send + Sync {
     async fn on_thinking(&self, _thinking: &ThinkingResponse) {}
     async fn on_init(&self, _init: &InitResponse) {}
     async fn on_error(&self, _error: &ErrorResponse) {}
+    async fn on_permission_denied(&self, _permission_denied: &PermissionDeniedResponse) {}
     async fn on_rate_limit(&self, _rate_limit: &RateLimitResponse) {}
     async fn on_hook_started(&self, _hook: &HookLifecycleResponse) {}
     async fn on_hook_progress(&self, _hook: &HookLifecycleResponse) {}
@@ -49,6 +50,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::Thinking(t) => handler.on_thinking(t).await,
         Response::Init(i) => handler.on_init(i).await,
         Response::Error(e) => handler.on_error(e).await,
+        Response::PermissionDenied(p) => handler.on_permission_denied(p).await,
         Response::RateLimit(r) => handler.on_rate_limit(r).await,
         Response::HookStarted(h) => handler.on_hook_started(h).await,
         Response::HookProgress(h) => handler.on_hook_progress(h).await,

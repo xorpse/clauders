@@ -11,9 +11,10 @@ use crate::proto::message::{
     ApiRetryMessage, AssistantError, BackgroundTask, BackgroundTasksChangedMessage,
     CommandsChangedMessage, CompactBoundaryMessage, CompactMetadata, CompactTrigger,
     FailedPersistedFile, FilesPersistedMessage, HookLifecycleMessage, InitMessage,
-    NotificationMessage, PersistedFile, ResultMessage, SlashCommand, StatusKind, StatusMessage,
-    SystemMessage, TaskNotificationMessage, TaskNotificationStatus, TaskPatch, TaskProgressMessage,
-    TaskStartedMessage, TaskUpdatedMessage, TaskUsage, ThinkingTokensMessage, Usage,
+    NotificationMessage, PermissionDeniedMessage, PersistedFile, ResultMessage, SlashCommand,
+    StatusKind, StatusMessage, SystemMessage, TaskNotificationMessage, TaskNotificationStatus,
+    TaskPatch, TaskProgressMessage, TaskStartedMessage, TaskUpdatedMessage, TaskUsage,
+    ThinkingTokensMessage, Usage,
 };
 use crate::proto::{Message, PermissionMode, RateLimitEvent};
 
@@ -25,6 +26,7 @@ pub enum Response {
     Thinking(ThinkingResponse),
     Init(InitResponse),
     Error(ErrorResponse),
+    PermissionDenied(PermissionDeniedResponse),
     RateLimit(RateLimitResponse),
     HookStarted(HookLifecycleResponse),
     HookProgress(HookLifecycleResponse),
@@ -42,6 +44,35 @@ pub enum Response {
     CommandsChanged(CommandsChangedResponse),
     BackgroundTasksChanged(BackgroundTasksChangedResponse),
     Complete(CompleteResponse),
+}
+
+#[derive(Debug, Clone)]
+pub struct PermissionDeniedResponse(pub(crate) PermissionDeniedMessage);
+
+impl PermissionDeniedResponse {
+    pub fn tool_name(&self) -> &str {
+        self.0.tool_name()
+    }
+
+    pub fn tool_use_id(&self) -> &str {
+        self.0.tool_use_id()
+    }
+
+    pub fn decision_reason_type(&self) -> &str {
+        self.0.decision_reason_type()
+    }
+
+    pub fn message(&self) -> &str {
+        self.0.message()
+    }
+
+    pub fn uuid(&self) -> &str {
+        self.0.uuid()
+    }
+
+    pub fn session_id(&self) -> &str {
+        self.0.session_id()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -635,6 +666,10 @@ impl Response {
         matches!(self, Self::Error(_))
     }
 
+    pub fn is_permission_denied(&self) -> bool {
+        matches!(self, Self::PermissionDenied(_))
+    }
+
     pub fn is_rate_limit(&self) -> bool {
         matches!(self, Self::RateLimit(_))
     }
@@ -729,6 +764,13 @@ impl Response {
     pub fn as_error(&self) -> Option<&ErrorResponse> {
         match self {
             Self::Error(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn as_permission_denied(&self) -> Option<&PermissionDeniedResponse> {
+        match self {
+            Self::PermissionDenied(p) => Some(p),
             _ => None,
         }
     }
@@ -873,6 +915,13 @@ impl Response {
         }
     }
 
+    pub fn into_permission_denied(self) -> Option<PermissionDeniedResponse> {
+        match self {
+            Self::PermissionDenied(p) => Some(p),
+            _ => None,
+        }
+    }
+
     pub fn into_rate_limit(self) -> Option<RateLimitResponse> {
         match self {
             Self::RateLimit(r) => Some(r),
@@ -1010,6 +1059,11 @@ impl Response {
                 SystemMessage::Init(init) => vec![Self::Init(InitResponse(init.clone()))],
                 SystemMessage::Error(err) => {
                     vec![Self::Error(ErrorResponse::System(err.error().to_owned()))]
+                }
+                SystemMessage::PermissionDenied(msg) => {
+                    vec![Self::PermissionDenied(PermissionDeniedResponse(
+                        msg.clone(),
+                    ))]
                 }
                 SystemMessage::HookStarted(msg) => {
                     vec![Self::HookStarted(HookLifecycleResponse(msg.clone()))]
