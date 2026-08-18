@@ -259,7 +259,8 @@ pub enum SystemMessage {
 pub struct PermissionDeniedMessage {
     tool_name: String,
     tool_use_id: String,
-    decision_reason_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    decision_reason_type: Option<String>,
     message: String,
     uuid: String,
     session_id: String,
@@ -276,8 +277,8 @@ impl PermissionDeniedMessage {
         &self.tool_use_id
     }
 
-    pub fn decision_reason_type(&self) -> &str {
-        &self.decision_reason_type
+    pub fn decision_reason_type(&self) -> Option<&str> {
+        self.decision_reason_type.as_deref()
     }
 
     pub fn message(&self) -> &str {

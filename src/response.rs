@@ -58,7 +58,7 @@ impl PermissionDeniedResponse {
         self.0.tool_use_id()
     }
 
-    pub fn decision_reason_type(&self) -> &str {
+    pub fn decision_reason_type(&self) -> Option<&str> {
         self.0.decision_reason_type()
     }
 
