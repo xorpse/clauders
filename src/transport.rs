@@ -10,7 +10,7 @@ use crate::agent::Agent;
 use crate::error::Error;
 use crate::options::Tools;
 use crate::proto::control::ResponseEnvelope;
-use crate::proto::{Incoming, RequestEnvelope};
+use crate::proto::{Incoming, RequestEnvelope, SystemMessage};
 
 pub struct Transport {
     child: Child,
@@ -393,6 +393,13 @@ impl Transport {
                     tracing::error!(line = %line, error = %e, "failed to parse incoming message");
                     Error::ProtocolError(format!("failed to parse: {e}"))
                 })?;
+
+                if matches!(incoming, Incoming::System(SystemMessage::Unknown)) {
+                    tracing::warn!(
+                        line = %line,
+                        "received unknown Claude Code system message",
+                    );
+                }
                 Ok(Some(incoming))
             }
             None => Ok(None),

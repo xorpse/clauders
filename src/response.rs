@@ -43,6 +43,7 @@ pub enum Response {
     ThinkingTokens(ThinkingTokensResponse),
     CommandsChanged(CommandsChangedResponse),
     BackgroundTasksChanged(BackgroundTasksChangedResponse),
+    Unknown,
     Complete(CompleteResponse),
 }
 
@@ -726,6 +727,10 @@ impl Response {
         matches!(self, Self::BackgroundTasksChanged(_))
     }
 
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Self::Unknown)
+    }
+
     pub fn as_text(&self) -> Option<&TextResponse> {
         match self {
             Self::Text(t) => Some(t),
@@ -1114,6 +1119,7 @@ impl Response {
                         BackgroundTasksChangedResponse(msg.clone()),
                     )]
                 }
+                SystemMessage::Unknown => vec![Self::Unknown],
             },
             Message::Result(result) => vec![Self::Complete(CompleteResponse(result.clone()))],
         }

@@ -253,6 +253,8 @@ pub enum SystemMessage {
     ThinkingTokens(ThinkingTokensMessage),
     CommandsChanged(CommandsChangedMessage),
     BackgroundTasksChanged(BackgroundTasksChangedMessage),
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

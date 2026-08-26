@@ -34,6 +34,7 @@ pub trait Handler: Send + Sync {
     async fn on_thinking_tokens(&self, _tokens: &ThinkingTokensResponse) {}
     async fn on_commands_changed(&self, _commands: &CommandsChangedResponse) {}
     async fn on_background_tasks_changed(&self, _tasks: &BackgroundTasksChangedResponse) {}
+    async fn on_unknown(&self) {}
     async fn on_complete(&self, _complete: &CompleteResponse) {}
 }
 
@@ -67,6 +68,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::ThinkingTokens(t) => handler.on_thinking_tokens(t).await,
         Response::CommandsChanged(c) => handler.on_commands_changed(c).await,
         Response::BackgroundTasksChanged(b) => handler.on_background_tasks_changed(b).await,
+        Response::Unknown => handler.on_unknown().await,
         Response::Complete(c) => handler.on_complete(c).await,
     }
 }
