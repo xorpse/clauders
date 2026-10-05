@@ -2,11 +2,11 @@ use async_trait::async_trait;
 
 use crate::response::{
     ApiRetryResponse, BackgroundTasksChangedResponse, CommandsChangedResponse,
-    CompactBoundaryResponse, CompleteResponse, ErrorResponse, FilesPersistedResponse,
-    HookLifecycleResponse, InitResponse, NotificationResponse, PermissionDeniedResponse,
-    RateLimitResponse, Response, StatusResponse, TaskNotificationResponse, TaskProgressResponse,
-    TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
-    ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
+    CompactBoundaryResponse, CompleteResponse, ErrorResponse, FallbackResponse,
+    FilesPersistedResponse, HookLifecycleResponse, InitResponse, NotificationResponse,
+    PermissionDeniedResponse, RateLimitResponse, Response, StatusResponse,
+    TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse,
+    TextResponse, ThinkingResponse, ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 
 #[async_trait]
@@ -15,6 +15,7 @@ pub trait Handler: Send + Sync {
     async fn on_tool_use(&self, _tool_use: &ToolUseResponse) {}
     async fn on_tool_result(&self, _tool_result: &ToolResultResponse) {}
     async fn on_thinking(&self, _thinking: &ThinkingResponse) {}
+    async fn on_fallback(&self, _fallback: &FallbackResponse) {}
     async fn on_init(&self, _init: &InitResponse) {}
     async fn on_error(&self, _error: &ErrorResponse) {}
     async fn on_permission_denied(&self, _permission_denied: &PermissionDeniedResponse) {}
@@ -49,6 +50,7 @@ pub async fn dispatch<H: Handler + ?Sized>(handler: &H, response: &Response) {
         Response::ToolUse(t) => handler.on_tool_use(t).await,
         Response::ToolResult(t) => handler.on_tool_result(t).await,
         Response::Thinking(t) => handler.on_thinking(t).await,
+        Response::Fallback(f) => handler.on_fallback(f).await,
         Response::Init(i) => handler.on_init(i).await,
         Response::Error(e) => handler.on_error(e).await,
         Response::PermissionDenied(p) => handler.on_permission_denied(p).await,

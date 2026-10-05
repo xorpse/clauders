@@ -4,8 +4,8 @@ use std::time::Duration;
 use serde_json::Value;
 
 use crate::proto::content_block::{
-    Text as ProtoText, Thinking as ProtoThinking, ToolResult as ProtoToolResult,
-    ToolUse as ProtoToolUse,
+    Fallback as ProtoFallback, FallbackModel, Text as ProtoText, Thinking as ProtoThinking,
+    ToolResult as ProtoToolResult, ToolUse as ProtoToolUse,
 };
 use crate::proto::message::{
     ApiRetryMessage, AssistantError, BackgroundTask, BackgroundTasksChangedMessage,
@@ -24,6 +24,7 @@ pub enum Response {
     ToolUse(ToolUseResponse),
     ToolResult(ToolResultResponse),
     Thinking(ThinkingResponse),
+    Fallback(FallbackResponse),
     Init(InitResponse),
     Error(ErrorResponse),
     PermissionDenied(PermissionDeniedResponse),
@@ -446,6 +447,19 @@ impl ToolResultResponse {
 }
 
 #[derive(Debug, Clone)]
+pub struct FallbackResponse(pub(crate) ProtoFallback);
+
+impl FallbackResponse {
+    pub fn from(&self) -> &FallbackModel {
+        self.0.from()
+    }
+
+    pub fn to(&self) -> &FallbackModel {
+        self.0.to()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ThinkingResponse(pub(crate) ProtoThinking);
 
 impl ThinkingResponse {
@@ -643,6 +657,24 @@ impl CompleteResponse {
 }
 
 impl Response {
+    pub fn is_fallback(&self) -> bool {
+        matches!(self, Self::Fallback(_))
+    }
+
+    pub fn as_fallback(&self) -> Option<&FallbackResponse> {
+        match self {
+            Self::Fallback(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn into_fallback(self) -> Option<FallbackResponse> {
+        match self {
+            Self::Fallback(f) => Some(f),
+            _ => None,
+        }
+    }
+
     pub fn is_text(&self) -> bool {
         matches!(self, Self::Text(_))
     }
@@ -1051,6 +1083,9 @@ impl Response {
                         }
                         crate::proto::ContentBlock::Thinking(t) => {
                             Self::Thinking(ThinkingResponse(t.clone()))
+                        }
+                        crate::proto::ContentBlock::Fallback(f) => {
+                            Self::Fallback(FallbackResponse(f.clone()))
                         }
                         crate::proto::ContentBlock::Image(_)
                         | crate::proto::ContentBlock::Document(_) => Self::Text(TextResponse {

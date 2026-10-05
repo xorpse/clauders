@@ -8,6 +8,7 @@ pub enum ContentBlock {
     ToolUse(ToolUse),
     ToolResult(ToolResult),
     Thinking(Thinking),
+    Fallback(Fallback),
     Image(Image),
     Document(Document),
 }
@@ -17,6 +18,105 @@ pub struct Text {
     text: String,
     #[serde(flatten)]
     extra: Map<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Fallback {
+    from: FallbackModel,
+    to: FallbackModel,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FallbackModel {
+    model: String,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+impl Fallback {
+    pub fn new(from: FallbackModel, to: FallbackModel) -> Self {
+        Self {
+            from,
+            to,
+            extra: Map::new(),
+        }
+    }
+
+    pub fn from(&self) -> &FallbackModel {
+        &self.from
+    }
+
+    pub fn to(&self) -> &FallbackModel {
+        &self.to
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
+    pub fn set_from(&mut self, from: FallbackModel) {
+        self.from = from;
+    }
+
+    pub fn set_to(&mut self, to: FallbackModel) {
+        self.to = to;
+    }
+
+    pub fn set_extra(&mut self, extra: Map<String, Value>) {
+        self.extra = extra;
+    }
+
+    pub fn with_from(mut self, from: FallbackModel) -> Self {
+        self.set_from(from);
+        self
+    }
+
+    pub fn with_to(mut self, to: FallbackModel) -> Self {
+        self.set_to(to);
+        self
+    }
+
+    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
+        self.set_extra(extra);
+        self
+    }
+}
+
+impl FallbackModel {
+    pub fn new(model: impl Into<String>) -> Self {
+        Self {
+            model: model.into(),
+            extra: Map::new(),
+        }
+    }
+
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
+    pub fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+
+    pub fn set_model(&mut self, model: impl Into<String>) {
+        self.model = model.into();
+    }
+
+    pub fn set_extra(&mut self, extra: Map<String, Value>) {
+        self.extra = extra;
+    }
+
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.set_model(model);
+        self
+    }
+
+    pub fn with_extra(mut self, extra: Map<String, Value>) -> Self {
+        self.set_extra(extra);
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,6 +540,10 @@ impl Document {
 }
 
 impl ContentBlock {
+    pub fn fallback(from: FallbackModel, to: FallbackModel) -> Self {
+        Self::Fallback(Fallback::new(from, to))
+    }
+
     pub fn text(text: impl Into<String>) -> Self {
         Self::Text(Text::new(text))
     }

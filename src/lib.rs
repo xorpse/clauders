@@ -63,10 +63,10 @@ pub use proto::message::{
 };
 pub use response::{
     ApiRetryResponse, BackgroundTasksChangedResponse, CommandsChangedResponse,
-    CompactBoundaryResponse, CompleteResponse, ErrorResponse, FilesPersistedResponse,
-    HookLifecycleResponse, InitResponse, NotificationResponse, PermissionDeniedResponse,
-    RateLimitResponse, Response, Responses, StatusResponse, TaskNotificationResponse,
-    TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse, TextResponse, ThinkingResponse,
-    ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
+    CompactBoundaryResponse, CompleteResponse, ErrorResponse, FallbackResponse,
+    FilesPersistedResponse, HookLifecycleResponse, InitResponse, NotificationResponse,
+    PermissionDeniedResponse, RateLimitResponse, Response, Responses, StatusResponse,
+    TaskNotificationResponse, TaskProgressResponse, TaskStartedResponse, TaskUpdatedResponse,
+    TextResponse, ThinkingResponse, ThinkingTokensResponse, ToolResultResponse, ToolUseResponse,
 };
 pub use tool::{Tool, ToolError, ToolInput};

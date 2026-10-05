@@ -3,7 +3,7 @@ pub mod control;
 pub mod incoming;
 pub mod message;
 
-pub use content_block::ContentBlock;
+pub use content_block::{ContentBlock, Fallback, FallbackModel};
 pub use control::{
     ErrorCode, ErrorDetail, ErrorResponse, PermissionMode, Request, RequestEnvelope, Response,
     ServerInfo, SuccessResponse,
